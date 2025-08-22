@@ -1,0 +1,695 @@
+Distilling Cross-Temporal Contexts for Continuous Sign Language Recognition
+Leming Guo1Wanli Xue1*Qing Guo2*Bo Liu3Kaihua Zhang4
+Tiantian Y uan5Shengyong Chen1
+1School of Computer Science and Engineering, Tianjin University of Technology,
+2Centre for Frontier AI Research (CFAR), A*STAR, Singapore,3Walmart Global Tech, Sunnyvale, CA, USA,
+4School of Computer and Software, Nanjing University of Information Science and Technology,
+5Technical College for the Deaf, Tianjin University of Technology
+Abstract
+Continuous sign language recognition (CSLR) aims to
+recognize glosses in a sign language video. State-of-the-
+art methods typically have two modules, a spatial percep-tion module and a temporal aggregation module, which arejointly learned end-to-end. Existing results in [9, 20,25,36]
+have indicated that, as the frontal component of the over-
+all model, the spatial perception module used for spatialfeature extraction tends to be insufﬁciently trained. In this
+paper , we ﬁrst conduct empirical studies and show that ashallow temporal aggregation module allows more thor-ough training of the spatial perception module. However , a
+shallow temporal aggregation module cannot well captureboth local and global temporal context information in sign
+language. To address this dilemma, we propose a cross-
+temporal context aggregation (CTCA) model. Speciﬁcally,
+we build a dual-path network that contains two branches forperceptions of local temporal context and global temporalcontext. We further design a cross-context knowledge distil-lation learning objective to aggregate the two types of con-text and the linguistic prior . The knowledge distillation en-ables the resultant one-branch temporal aggregation mod-ule to perceive local-global temporal and semantic context.This shallow temporal perception module structure facili-tates spatial perception module learning. Extensive exper-iments on challenging CSLR benchmarks demonstrate thatour method outperforms all state-of-the-art methods.
+1. Introduction
+Sign language is a visual language for deaf and hearing-
+impaired people for ease of communication. Because signlanguage has a different grammatical structure and ex-pression from natural spoken language, deaf and hearing-
+*Wanli Xue and Qing Guo are corresponding authors (xue-
+wanli@email.tjut.edu.cn and tsingqguo@ieee.org).Connect. Temporal Classification
+Output: Gloss PredictionsTemporal Aggregation Module(a) Existing CSLR framework
+30 35 40 45 5020222426Word Error Rate(%)CTCA(Ours)
+TLP(ECCV2022)
+SMKD(ICCV2021)
+VAC(ICCV2021)
+SFL(ECCV2020)
+Given Annotation:
+__ON__ĠJETZT ĠWETTER Ġ
+WIE-AUSSEHENĠMORGENĠSAMSTAGĠ
+ZWEITEĠAPRILĠ__OFF__Ġ__ON__ĠZEIGEN-BILDSCHIRMĠ__OFF__
+The generalization (IIW) of TAM2.04.06.01.0E-05
+The generalization (IIW  ) of SPM2.0E-05 4.0E-05 6.0E-05 2.0E-06TLP
+CTCASMKDVA C
+WER
+<<8.0
+1.0E-05
+1.0E-05
+1.0E-05
+(c) Comparison to SOTAs on (WER  ) and model efficiency 
+Test time(seconds)
+<<Model Size
+1.0E-0510.0
+Baseline(b) The generalization(IIW  ) and performance(WER  ) comparison
+Input: Sign Language Video
+Figure 1. (a) is the common CSLR framework. (b) presents the
+generalization capability (i.e., information stored in weights (IIW)[31]) of TAMs and SPMs of baseline, state-of-the-art methods andthe proposed method. (c) is the performance of the state-of-the-artmethods including word error rate, test time, and model size.
+impaired people hardly communicate normally with hear-
+ing people in daily life. To eliminate this communica-tion gap, continuous sign language recognition (CSLR) en-
+forces to recognition of various glosses from a sign lan-guage video. Due to the data collection and annotationbeing labor-intensive, CSLR benchmarks adopt a sentence-
+annotation manner for all sign language videos [1, 15,33].
+In recent years, there is a consensus among state-of-the-
+art methods on a baseline framework (See Fig. 1(a)). It
+is made up of a spatial perception module (SPM), and atemporal aggregation module (TAM) including two compo-nents for local and global temporal perception module, and
+the connectionist temporal classiﬁcation (CTC) loss [8] for
+training. At present, these methods [9, 20,25,36] have per-
+ceived one limitation of this framework that the temporalaggregation module can lead to insufﬁciently trained spatial
+107712023 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)
+979-8-3503-0129-8/23/$31.00 ©2023 IEEE
+DOI 10.1109/CVPR52729.2023.010372023 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) | 979-8-3503-0129-8/23/$31.00 ©2023 IEEE | DOI: 10.1109/CVPR52729.2023.01037
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:34:29 UTC from IEEE Xplore.  Restrictions apply. perception module and affect the ﬁnal accuracy. We use a
+recent interpretation method (i.e., the compression of infor-mation stored in weights (IIW) [ 31]) to measure the gener-
+alization capability of different neural modules. Fig. 1(b)
+shows the IIWs of TAMs and SPMs of baseline and state-of-the-art works and infers their positive relation, i.e., low-
+generalization TAM (i.e., high IIW) usually leads to low-
+generalization SPM. We provide more studies in Sec. 3.
+Y . Min et al .[20] measure the difference of correctly and
+incorrectly recognized results between auxiliary and pri-mary classiﬁers to evaluate model overﬁtting, and A. Haoet al .[9] visualized heatmaps of TAM’s self-similarity ma-
+trices to show what the local and global temporal perception
+learning. However, there are no straightforward quantitative
+studies to discuss the effects of TAM on SPM, and we do notknow how signiﬁcant the effects could be and have no ideaabout the desired temporal aggregation. In this paper, weextensively study the limitation and desirable properties of
+the temporal aggregation module in the CSLR framework
+via constructing a baseline framework and extensive empir-ical studies. We insight that a desired temporal aggregationmodule should be a shallow architecture to allow more ef-fective training of spatial perception module but also shouldbe a deep one for a high temporal aggregation capability.
+Whereas, it is quite challenging for the temporal aggrega-tion module to achieve these properties simultaneously.
+To overcome this challenge, we propose the cross-
+temporal context aggregation (CTCA) that a shallow tempo-
+ral aggregation module has capable of incorporating local-global temporal contexts and the linguistic prior. Speciﬁ-cally, we construct a dual-path network, which decouplesthe local and global perception modules and imposes a lin-guistic module in parallel. This architecture ensures the lo-cal context perception, global context perception, and lin-guistic prior extraction. Furthermore, we propose a cross-context knowledge distillation loss function to transfer thelocal temporal context and the linguistic prior to the globalperception module. Notice that the spatial perception mod-ule can facilitate itself by receiving cross-context knowl-edge as supervision during distillation. Fig. 1(b) shows that
+both SPM and TAM in CTCA achieve higher generalizationthan the ones of baselines. Consequently, Fig. 1(c) delivers
+CTCA ’s superiority and it outperforms the state-of-the-art
+methods on WER, test time, and model size.
+2. Related Work
+Continuous sign language recognition . To learn stronger
+representation under the sentence-annotated benchmarks,current deep learning-based approaches exploit the Connec-tionist Temporal Classiﬁcation (CTC) [ 8], which provides a
+many-to-one mapping between frames and glosses. To mit-
+igate the insufﬁcient training problem [ 9,20,25,36], a time-
+consuming iterative ﬁne-tuning strategy [6, 25] is utilizedto boost the model generalization. In contrast, the end-to-end methods proposed, such as V AC [20] and SMKD [9]proposed an end-to-end alignment constraint to make thelearning of local and global temporal context to be con-sistent. C
+2SLR [36] designed two constraints for building
+spatial consistency and temporal perception consistency toenhance the representation power of the model. Y . Min et
+al.[21] proposed an optimized CTC loss, which can con-
+strain features on a hypersphere and control the peak be-
+havior of CTC loss to enhance the feature generalization.In this paper, we achieve a shallower temporal perceptionmodule that not only promotes more thorough training ofspatial perception model but also aggregates local-global
+temporal context via a cross-temporal context distillation.
+Knowledge distillation. Knowledge distillation (KD) is
+a model compression technique that facilitates student mod-els to achieve strong performance by excavating knowledgefrom large teacher models [11] or itself [16]. To eliminates
+huge training cost needs the ONE [16] proposes a multi-
+branch network to conduct an ensemble on-the-ﬂy. V AC
+[20] conducts its local and global temporal context module
+as an implicit teacher to promote each one to gain advancedgeneralization. Wang et al.[ 30] propose that consistent
+knowledge of multi-modal contains in each channel, andcan achieve multi-modal fusion by exchanging their chan-nels. POS-SCAN [35], LGD [32], and ELG [27] assume
+the linguistic information shares similar semantics with thevisual. They transfer the image-text alignment from teacherto student. In this paper, we distill the local-global tempo-ral information and linguistic context to a single one-branchtemporal aggregation module.
+3. Preliminaries and Analysis
+3.1. General CSLR Framework
+Given a sign language video X={Xt}T
+t=1 having
+Tframes, a continuous sign language recognition method
+(CSLR) denoted as φ(·)contributes to predicting Lglosses
+(i.e.,Y={yi}L
+i=1) contained in the video where yiis the
+i-th gloss, and we have Y=φ(X). As shown in Fig. 1(a),
+we show three clips in the input video, which are high-
+lighted with pink, blue, and green colors. A CSLR methodis desired to predict the corresponding three glosses, i.e.,
+‘JETZT’, ‘WETTER’, and ‘APRIL’. The existing trainingdataset only provides sentence annotation (See the annota-tion in Fig. 1) instead of the ground truth of each frame and
+we even do not know the exact number of glosses in the in-put video. Hence, the task is a weakly-supervised learning
+problem and signiﬁcantly challenging.
+The dominant CSLR framework [9, 20,36] mainly in-
+volves three modules: spatial perception module (SPM) to
+extract feature representation of each frame independently,
+temporal aggregation module (TAM) to sequentially con-
+10772
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:34:29 UTC from IEEE Xplore.  Restrictions apply. 102030405060708090100
+The WER of variant modelsThe IIW of spatial perception module
+The IIW of 1D-TCN
+0139 2 21.02.02.5
+1.02.03.04.05.06.07.0
+23.1 22.125.792.6 92.5
+0139 2 2WER(%)1.5IIW
+IIW
+ E-04 E-05
+Figure 2. Experiments about chain depth variants of TAM in the
+general CSLR framework. The IIW [31] is exploited to measure
+the generalization gap (the larger gap, the larger the IIW) of SPMand TAM. The WER value is utilized to estimate the performance.
+duct local and global aggregation across frames’ features,
+and the classiﬁcation module for the ﬁnal prediction. Wedenote the three modules as φ
+spm(·),φtam(·), andφcls(·), re-
+spectively, and can reformulate the whole process as Y=
+φ(X)=φcls(φtam(φspm(X)))(See Fig. 1(a)). Speciﬁcally,
+φspm(·)ﬁrst extracts features of all frames via a convolu-
+tion neural network like ResNet18 [10], which are denotedasV={V
+t}T
+t=1. Then,φtam(·)uses a local temporal con-
+text perception component like temporal convolution net-
+work (i.e., 1D-TCN) [5, 9,20,36] to capture the correla-
+tion across adjacent frames and map the representations V
+to a new one, i.e.,Vloc={Vloc
+t}T
+t=1.φtam(·)further feeds
+the locally-aggregated representations to the global percep-
+tion component like a two-layer BLSTM [9, 20,34,36]t o
+capture the global temporal patterns across all frames and
+getVglo={Vglo
+t}T
+t=1. Then, the Vglois further passed
+toφcls, which is a fully-connected layer to predict logits
+Zglo={Zglo
+t}T
+t=1. Finally, the Zglois fed into the CTC to
+align the prediction and ground truth and calculate the loss.
+3.2. Empirical Studies
+Following the fact about chain rules of back-
+propagation, we study the effects of the chain depth
+of the temporal aggregation module to the spatial percep-tion module. Intuitively, the temporal aggregation modulewith fewer layers (i.e., a shallow TAM) has fewer effectson the back-propagation of gradients, and a shallower TAMcould lead to a more powerful SPM. To conduct a solidanalysis, we have the following setups:
+•Baseline CSLR. We follow the general CSLR frame-
+work in Sec. 3.1and construct a CSLR method includ-
+ing a cascaded ResNet18 as the SPM, K-layer 1D-TCNs and a two-layer BLSTM as the TAM, and theclassiﬁer and the CTC as the classiﬁcation module.TheK-layer 1D-TCNs and BLSTM are used for local
+and global temporal contexts perception, respectively.
+•TAM with different chain depths. We set ﬁve vari-
+ants of TAM by stacking K1D-TCNs where we set
+K∈{0,1,3,9,22}
+*. We do not tune the depth of
+the BLSTM since the BLSTM is prone to over-ﬁtting[9,20], we contribute to exploring the inﬂuence of the
+depth between SPM and BLSTM.
+•Evaluation of SPM and CSLR. Following existing
+works, we use the word error rate (WER) to evaluatethe performance of the whole CSLR method. In con-trast, for TAM and SPM, we choose another metric,i.e., the compression of information stored in weights(IIW) [31], which is designed to understand the be-
+havior of neural networks and can be an indicator ofgeneralization gap (i.e., the accuracy difference on the
+test and training datasets) of neural networks [31] . In-
+tuitively, with the same training dataset, a lower IIWof a module means that the module contributes moreto the accuracy of the test dataset.
+With the above setups, we get ﬁve CSLR variants with
+ﬁve TAMs having different chain depths. Then, we train and
+test all variants on the RWTH-2014 dataset [15]. Specif-
+ically, we can calculate the word error rate (WER) of theﬁve variants for the prediction accuracy evaluation. We fur-ther count the information stored in weights (IIW) of theSPMs and TAMs of the ﬁve variants, respectively. As theresults are shown in Fig. 2, we have the following observa-
+tions:When we consider the chain depth (i.e., K) from 1
+to 22, the IIW of SPM gradually increases and reaches themaximum at K=2 2 while the IIW of TAM gradually de-
+creases, which means the effects of chain depth to the capa-bility of SPM and TAM have completely opposite trends. A
+powerful SPM desires a shallow TAM while the TAM itself
+requires a deeper architecture. Considering the changes
+of WER of the CSLR along different chain depths, we seethat the trend of WER is consistent with the IIW’s varia-tion trend, which means the SPM has higher effects thanthe TAM on the ﬁnal prediction accuracy.
+3.3. Motivations
+According to the above studies, a desired temporal ag-
+gregation module should be a shallow architecture to allowmore effective training of the spatial perception module butalso should be a deep one for a high temporal aggregationcapability. Such a contradiction makes the designing of a
+suitable TAM challenging. Because SPM is directly related
+to the ﬁnal accuracy, we tend to select a shallow TAM.
+*0illustrates the TAM drop the 1D-TCN. We adjust channels of 1D-
+TCN to make sure different variants have the same model size. Such as
+1,3,9,22denote their channels are 1024,512,256 and128, respectively.
+10773
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:34:29 UTC from IEEE Xplore.  Restrictions apply. JE TZT  WETTER   ...    APRIL
+Cross-
+modality 
+knowledge 
+distillationCross-temporal 
+knowledge 
+distillation
+ Linguistic 
+module 
+BERTShared spatial 
+perception 
+module
+ResNet18 Global temporal 
+perception branch
+BLSTM2lg
+2 rc
+rc 2gl
+2
+cmd
+Cross-Context Knowledge Distillation LossSPM-Shared Dual-Path Network
+Predicted 
+Glossesctc
+Vi deo Clips
+Glosses
+Ă
+Classifierctc
+Forward pass
+Bac kward passClassifier
+glo
+g
+glo
+g
+glo
+gls
+g
+gl
+ls
+loc
+lo
+oc
+lo
+oc Local temporal 
+perception branch
+1D-TCN
+Figure 3. Pipeline of the CTCA. In particular, the steps with black
+borders or black arrows belong to the CTCA test process.
+Then, the key problem becomes how to make TAM shal-
+lower and contribute more to the ﬁnal prediction accuracy.
+Existing works have noticed that both local and global
+temporal perception are critical to prediction accuracy. We
+also conduct a simple study and observe that removing any
+temporal perception components leads to a signiﬁcant accu-racy drop (See the supplementary material). All the aboveobservations motivate us to develop a shallower but morepowerful temporal aggregation module that has the capabil-
+ity of perceiving local and global context perception.
+4. Cross-Temporal Context Aggregation
+An intuitive idea is to utilize knowledge distillation to
+integrate local and global contexts into a shallow architec-
+ture. As a result, the two opposite requirements for TAMin Sec. 3.3 could be handled simultaneously. To this end,
+we ﬁrst provide a vanilla distillation solution in Sec. 4.1,
+which has several inherent limitations. Then, we impose amore advanced distillation method, i.e., cross-temporal con-
+text aggregation (CTCA), in Sec. 4.2and Sec. 4.3.
+4.1. A Vanilla Distillation Solution
+We follow the baseline CSLR in Sec. 3.2 and construct
+two independent CSLRs that have the same spatial percep-tion module (SPM) and classiﬁcation module but a different
+temporal aggregation module (TAM). The ﬁrst one retainsthe global perception component (i.e., a BLSTM) and re-
+moves the local component (i.e., 1D-TCN). Such a CSLRhas the shallowest TAM (i.e., K=0 in Sec. 3.2) and we
+denote it as CSLR-GloTAM. The second one only containsthe local perception component and the BLSTM layer is re-moved and we denote it as CSLR-LocTAM. The main goalis to train a CSLR-GloTAM to let its TAM have the localtemporal contexts. To this end, we use the CSLR-LocTAMto teach the CSLR-GloTAM for acquiring local informationand only use the CSLR-GloTAM for inference. The teach-ing manner follows the vanilla distillation [11].
+However, such a vanilla distillation approach has some
+limitations: In terms of CSLR-GloTAM, when BLSTM
+over-ﬁts the training data, the loss can be hardly propagated
+to the SPM. The distillation based on two separated CSLRscannot address this issue properly. By adapting existing
+distillation methods directly, we need to design two exclu-
+sive optimization schemes for the two independent CSLRs,respectively, which inevitably leads to high time and com-
+puting costs. The vanilla distillation leverages a fully-
+supervised distillation loss, which cannot be adapted to the
+weakly-supervised optimization like CSLR directly.
+4.2. SPM-Shared Dual-Path Network
+Enforcing to resolve the ﬁrst and second limitations in
+Sec. 4.1, we propose the SPM-Shared Dual-Path Network
+(SDPN). Inspired by [16], we adopt a multi-branch archi-
+tecture with a shared SPM to merge the training processes
+of teacher and student, which distills from each other in apeer-teaching manner. As a result, this structure avoids the
+requirement of two optimization schemes trade-offs. It iseasy to train with only one optimization scheme. As such,different from the vanilla distillation approach has two sepa-
+rate networks, the SDPN is composed of a shared SPM andfollowed a dual-path (See Fig. 3): local temporal percep-
+tion branch (i.e., 1D-TCN branch), global temporal percep-
+tion branch (i.e., BLSTM branch). Speciﬁcally, each branchitself of SDPN stands for the speciﬁc knowledge concur-rently, which conducts a native ensemble model on-the-ﬂy.With the above architecture, even if the BLSTM branchis over-ﬁtted, other branches like the 1D-TCN branch canstill back-propagate the loss to the shared SPM straightfor-wardly. More importantly, the SDPN is easy to adopt dis-tillation losses (See Sec. 4.3) to distill the local temporal
+context and the linguistic prior to reinforcing BLSTM. Thetwo branches of SDPN have different objectives and archi-tectures as done in [9, 17,20]. In particular, we only use the
+BLSTM branch during inference, rather than both branches.We detail the architectural designs in the following:
+Shared spatial perception module. We use the ResNet18
+for the spatial perception module (See Sec. 3.1) where the
+fully-connection layer is removed, which takes the video
+clips as inputs and outputs the spatial representation V.
+Local & global temporal perception branches. The local
+branch consists of a 1D-TCN and a local classiﬁer F
+loc. The
+1D-TCN is able to provide local temporal representations
+Vlocmaintained sign-wise information. And the local clas-
+siﬁer outputs the local prediction Zloc. The global branch
+contains a two-layer BLSTM and a global classiﬁer Fglo.
+The BLSTM outputs global temporal representations Vglo,
+which contains the order and correlation of co-occurring
+signs. The global classiﬁer outputs the global prediction
+10774
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:34:29 UTC from IEEE Xplore.  Restrictions apply. Zglo. Note that, both ZgloandZlocare optimized by CTC
+loss to achieve a knowledge complementary to the spatial
+perception module reinforcement, and the 1D-TCN is re-moved during inference.
+4.3. Cross-Context Knowledge Distillation Loss
+To make the shallow BLSTM branch learn both lo-
+cal & global perceptions and achieve the desired prop-erty against the third limitation in Sec. 4.1, we propose
+the Cross-Context Knowledge Distillation Loss (CCKD).CCKD composes a cross-temporal knowledge distillation(CTD) and a cross-modality knowledge distillation (CMD).The CTD builds a mutual temporal context distillation thatenables the BLSTM and 1D-TCN branches to incorpo-rate complementary knowledge to reﬁne themselves andthe SPM. The CMD distills linguistic prior i.e., inter-gloss
+semantic correlation from glosses sequence to BLSTMbranch to reinforce its temporal aggregation. In contrastto the vanilla distillation that enhances the student’s abilityto achieve consistent prediction scores with the teacher, theCCKD focuses on distilling channel-wise knowledge fromintermediate feature hints [28]. By doing so, CCKD facili-tates students to learn how to learn, rather than how to getprediction scores, which is more applicable to CSLR.
+Cross-temporal knowledge distillation. Local tempo-
+ral context guidance loss (L
+l2g). Given the local and global
+temporal representation VlocandVglo, theLl2gencourages
+theVgloto learn sign-wise context maintained in Vlocto re-
+main local-global temporal contexts. Due to the knowledge
+of sign-wise context being distinct from the global context,knowledge confusion may occur during the L
+l2gprocedure.
+To relieve the confusion, we weight the Vlocby the intersec-
+tion information I(Vloc,Vglo)amongVlocandVgloto sup-
+press signs information of Vlocwho differs with Vglo.
+Ll2g(Vglo,Vloc)=ϕ(Vglo,Vloc·I(Vloc,Vglo)), (1)
+ϕ(Vglo,Vloc)=τ2
+CC/summationdisplay
+c=1T/summationdisplay
+i=1KL((Vglo
+c,i),(Vloc
+c,i)), (2)
+I(Vloc,Vglo)=1
+σ(Vloc
+c,i)
+σ(Vglo
+c,i)+1, (3)
+where ifσ(Vloc
+c,i)
+σ(Vglo
+c,i)is large and thus I(Vloc,Vglo)is small,
+meaning the large different between VlocandVglo. The
+KL denotes the KL divergence, τis the temperature factor
+for smooth, σindicates the softmax function and Ccorre-
+sponds to the feature channels. As indicated in [28], the KL
+divergence can be used between intermediate feature hints.
+Global temporal context guidance loss (L g2l). In ad-
+dition, the Lg2lloss evolves distilling global contexts
+i.e., signs order and correlation among co-occurring signsto the 1D-TCN branch. As a result, remaining the local-
+global context, the 1D-TCN is applicable to learning sign-wise contexts by taking into account global contexts. TheL
+g2lloss is also formulated as a similarly form with Ll2g:
+Lg2l(Vloc,Vglo)=ϕ(Vloc,Vglo). (4)
+Reconstruction loss (L rc). The intuition behind this loss
+is that the distillation between 1D-TCN and BLSTM shouldbe further enhanced when the local representation is well-
+learned. Therefore, we impose the L
+rcas the reconstruc-
+tion function for the local temporal representation Vlocto
+reinforce cross-temporal context distillation. Notably, we
+experimentally follow the entropy principle [13, 18] to mea-
+sure knowledge uncertainty by w(Vloc
+i). If the estimated
+Vlocis well-learned and has a high certainty, H(Vloc
+i)be-
+comes small, leading to a large weight (1+w(Vloci)). Then,
+the consistency between local & global representations is
+further enhanced via the Lrc. We also adopt a residual con-
+nection for stable weighting.
+Lrc=/radicaltp/radicalvertex/radicalvertex/radicalbtT/summationdisplay
+i=1(Vglo
+i−Vloc
+i)2·T/summationdisplay
+i=1(1+w(Vloci)), (5)
+w(Vloc
+i)=e x p−H(Vloc
+i), (6)
+As mentioned above, the CTD loss is formulated as:
+Lctd=α1Ll2g+α2Lg2l+α3Lrc, (7)
+Where the α1,α2,α3achieve trade-offs among losses in
+the CTD loss. Furthermore, the CTD loss ensures the spa-
+tial perception module to be propagated the local-global in-formation during the whole training time, which avoids thepropagation effect of BSLTM overﬁtting and enhances SPMgeneralization ability, implicitly.Cross-modality knowledge distillation. The CTD loss
+only restricts the cross-temporal context statistics yet
+has weak semantic context supervision i.e., the linguis-
+tic prior. Motivated by CLIP [26] and ELG [27], the
+cross-modality knowledge distillation (CMD) is proposed
+to distill inter-gloss semantic correlation from glosses se-
+quence to BLSTM branch. In practice, given the gloss se-quenceY={y
+i}L
+i=1 corresponding to XwithLglosses,
+it will be embedded by pre-trained BERT to generate high-
+dimensional semantic features Ggls={Ggls
+i}L
+i=1∈RY×L.
+Further, the Gglsand global temporal representation Vglo
+will be computed by cross-attention [29] to generate the
+linguistic-visual relation G/hatwidet∈RY×L.
+G/hatwidet=softmax(fQ(Ggls)fK(Vglo)T
+√
+C)fV(Vglo), (8)
+Moreover, the self-correlation matrix cor/hatwidetwill be obtained
+by the matrix product of G/hatwidetand(G/hatwidet)T. Thecortis a
+10775
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:34:29 UTC from IEEE Xplore.  Restrictions apply. self-correlation matrix of gloss features Ggls,i.e.,cort=/vextenddouble/vextenddoubleGgls/vextenddouble/vextenddouble
+2/parenleftbig/vextenddouble/vextenddoubleGgls/vextenddouble/vextenddouble
+2/parenrightbigT. Finally, we distill the inter-gloss dis-
+crimination from the cortto thecor/hatwidetvia the cross-modality
+distillation loss Lcmd. Thetandˆtrepresent the gloss
+modality and visual modality, respectively.
+Lcmd=1
+LL/summationdisplay
+i=1σ(cor/hatwidet
+i)·log/bracketleftBigg
+σ(cor/hatwidet
+i)
+σ(cort
+i)/bracketrightBigg
+, (9)
+whereσindicates the softmax function. We involve cor/hatwidet
+to have the same knowledge with cortto enhance the
+linguistic-visual relation, which encourages Vgloto have the
+inter-gloss discrimination indirectly.
+Combining all loss functions, the CCKD is denoted as:
+LCCKD=αLctd+βLcmd+γLctc, (10)
+where the α,β, andγcontrol the trade-off among losses.
+4.4. Implementation Details
+Network details. We setK=3 and kernel size is 3 for 1D-
+TCN, each layer equips with a 1D Batch Norm layer and a
+ReLU activation. The output channel of each temporal layerin 1D-TCN is set to 1024 and BLSTM is set to 2048.
+Hyperparameters setting. Theτin Eq. (2) is set to 4, the
+α
+1,α2,α3in Eq. (7) are set to 0.2, 1, 1 respectively. And
+α,β, andγin Eq. (10) are set to 3, 130, 1 respectively. We
+ﬁnd that the α1is chosen in [0.1,1)and theβneeds to be
+set to among [50,150] to obtain good performance.
+Training and test strategy. During both the training and
+test stages for all benchmarks, we randomly discard half ofvideo frames as inputs following SFL [ 22]. We then resize
+the frame size to 256×256 and perform randomly cropping
+frames to 224×224, as well as random horizontal ﬂip (50%)
+in the training stage (only center crop frames to 224×224
+in the test stage). The BERT in the CMD loss is frozenand only employed in the training stage. In the test, onlythe spatial perception module and the global temporal per-ception branch are exploited to generate predictions. TheCTCA is implemented in PyTorch with one A100 GPU.
+5. Experiments
+5.1. Dataset and Evaluation
+RWTH-2014 [15] is a German sign language dataset, it
+consists of a total of 6,841 sentences with a vocabulary of1,295 glosses, signed by 9 different singers.
+RWTH-2014T [1] can be used for both CSLR and sign lan-
+guage translation tasks [1]. It involves a vocabulary of 1,085
+glosses, split into 7,096, 519, and 642 samples in the trainset, dev set, and test set, respectively.
+CSL-Daily [33] is a large Chinese sign language dataset
+about people’s daily life. It can be employed in both CSLRTable 1. Comparison with state-of-the-art methods on the RWTH-
+2014 dataset. (WER(%) the lower is the better).
+MethodsDev Test
+del/ins WER del/ins WER
+DNF [6] 7.8/3.5 23.8 7.8/3.4 24.4
+FCN [5] - 23.7 - 23.9
+VAC [ 20] 7.9/2.5 21.2 8.4/2.6 22.3
+CMA [23] 7.3/2.7 21.3 7.3/2.4 21.9
+SMKD [9] 6.8/2.5 20.8 6.3/2.3 21.0
+C2SLR [36] - 20.5 - 20.4
+TLP [17] 6.3/2.8 19.7 6.1/2.9 20.8
+RadialCTC [21] 6.5/2.7 19.4 6.1/2.6 20.2
+CTCA(Ours) 6.2/2.9 19.5 6.1/2.6 20.1
+Table 2. Comparison with state-of-the-art methods on the RWTH-
+2014T dataset. (WER(%) the lower is the better).
+MethodsWER
+Dev Test
+SLT [2] 24.6 24.5
+CNN+LSTM+HMM [14] 22.1 24.1
+BN-TIN+Transf [33] 22.7 23.9
+V-L Mapper [4] 21.9 22.5
+SMKD [9] 20.8 22.4
+C2SLR [36] 20.2 20.4
+TLP [9] 19.4 21.2
+CTCA(Ours) 19.3 20.3
+and sign language translation. There are 18,401, 1,077, and
+1,176 videos for the training set, dev set, and test set, re-spectively. It has a vocabulary of 2,000 glosses for CSLR.Evaluation metric. In this paper, we adopt the word er-
+ror rate (WER) metrics for CSLR methods evaluation. Itmeasures the minimum number of substitutions, deletions,and insertions that need to convert one predicted glosses se-quence to a given reference sequence [15].
+5.2. Comparison with State-of-the-arts
+Evaluation on RWTH-2014. The objective of the V AC
+and SMKD is to enhance the discriminative capacity ofthe visual module (i.e., SPM+1D-TCN). Meanwhile, our
+CTCA focuses on investigating and designing the desiredTAM for CSLR. As demonstrated in Tab. 1, the proposed
+CTCA solely utilizes the RGB information of sign languagevideos, yet it achieves competitive performance in terms ofthe WER (19.5% and 20.1%). Notably, it surpasses otherRGB cue-based approaches, i.e., SMKD, C2SLR, and TLP ,
+thereby validating the effectiveness of CTCA.Evaluation on RWTH-2014T. In Tab. 2, it is evident that
+the CTCA gains the best performance (19.3% and 20.3%)compared with other state-of-the-art approaches.Evaluation on CSL-Daily. To further assess the CTCA ’s
+generalization capacity, we evaluate it on the CSL-Dailybenchmark. As presented in Tab. 3, the CTCA outperforms
+10776
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:34:29 UTC from IEEE Xplore.  Restrictions apply. Table 3. Comparison with state-of-the-art methods on the CSL-
+Daily. (WER(%) the lower is the better).
+MethodsDev Test
+del/ins WER del/ins WER
+LS-HAN [12] 14.6/5.7 39.0 14.8/5.0 39.4
+SLT(Gloss+Text) [2] 10.3/4.4 33.1 9.6/4.1 32.0
+FCN [5] 12.8/4.0 33.2 12.6/3.7 32.5
+BN-TIN+Transf [33] 13.9/3.4 33.6 13.5/3.0 33.1
+TIN-Iterative [6] 12.8/3.3 32.8 12.5/2.7 32.4
+CTCA(Ours) 9.2/2.5 31.3 8.1/2.3 29.4
+Table 4. Effect of the SDPN architecture on the RWTH-2014.
+Methods IIWDev Test
+del/ins WER del/ins WER
+Baseline 6.7E-5 7.0/3.0 21.8 6.7/2.7 22.1
+Baseline+SDPN 5.6E-5 7.3/3.1 21.7 7.4/2.4 21.8
+V AC(VE) [20] 5.4E-5 - 23.3 - 23.8
+V AC(VE)+SDPN 4.2E-5 7.6/3.1 22.0 7.6/3.0 22.6
+all other methods and achieves a 3% WER advantage over
+the second-best performer, the TIN-Iterative.
+5.3. Ablation Study
+Beneﬁts of SPM-Shared Dual-Path Network. Tab. 4
+illustrates that when both baseline and V AC are con-
+structed to SDPN architecture, achieving lower general-ization gap (lower IIW) and improved performance (lowerWER). It is noteworthy that during the testing, only the spa-tial perception module and the BLSTM branch of SDPNare utilized. These results suggest that the SDPN architec-ture can facilitate thorough training for the spatial percep-tion module, leading to improved performance.
+Beneﬁts of components of Cross-Context Knowledge
+Distillation loss. Effect of vanilla distillation solution.
+We compare the vanilla distillation approach, as discussedin Sec. 4.1 with the baseline. As presented in Tab. 5, the
+vanilla distillation yields an improvement over the baseline,yet it is still inferior to each component of the CCKD.
+Effect of L
+l2gloss and Lg2lloss. We introduced two
+distillation methods, SDPN A and SDPN B based on the
+SDPN model. SDPN A is the 1D-TCN distilling sign-wiseknowledge to the BLSTM via the L
+l2g. This method im-
+proves performance on the test set by 1.0% compared to
+the baseline. We also removes the intersection informationweighted term I(.;)from SDPN A, which results in a 0.4%
+drop in performance on the test set, implying its effective-
+ness. SDPN B, on the other hand, is an SDPN model opti-mized by the L
+g2l, which yields a 1.4% WER improvement
+over the baseline on the test set. It is noteworthy that SDPNA ’s performance is inferior to SDPN B. This can be ex-plained that BLSTM tends to overﬁt on the sequential orderof signs, which is easy to learn and leads to fast convergenceTable 5. Ablation study on cross-context knowledge distillation
+loss on the RWTH-2014.
+MethodLctdLcmd Dev TestLl2g Lg2lLrc
+Baseline -- - - 21.8 22.1
+V anilla -- - - 21.7 21.9
+SDPN A /check -- - 21.0 21.1
+SDPN A−I (.;)/check -- - 21.3 21.5
+SDPN B -/check - - 20.8 20.7
+SDPN C /check/check - - 20.4 20.6
+SDPN D /check/check/check - 20.0 20.4
+SDPN D−w (.;)/check/check/check - 20.2 20.6
+SDPN E -- - /check 21.3 21.0
+CTCA /check/check/check /check 19.5 20.1
+Table 6. Comparison of different knowledge fusion schemes onthe RWTH-2014. “Wasserstein” is the Wasserstein distance.
+Method Knowledge fusion Dev Test
+SDPN- 21.7 21.8
+V anilla distillation [11] 21.6 21.6
+Wasserstein [3] 21.6 21.5
+JMMD [19] 21.3 21.3
+CKD [28] 21.3 21.5
+CTCA(L l2g) 21.0 21.1
+concatenation 22.7 23.6
+point-wise addition 21.2 22.3
+attention 22.2 22.6
+optimized by CTC [9, 25]. Although the BSLTM in SDPN
+A receives local context knowledge, it still propagates lim-
+ited local-global information to SPM, resulting in limitedgain for SPM when it is overﬁtting. Furthermore, the 1D-TCN is less prone to overﬁtting [5] and in SDPN B facili-tated by the L
+g2lthe 1D-TCN can learn sign-wise context
+by taking into account global contexts. Then it can providericher sign-wise supervision to the SPM for locating signs,which can eliminate the limited back-propagation. As a re-sult, more robust features SPM can generate, and they arefed into BLSTM, which outperforms SDPN A. This ﬁnd-ing is consistent with the observation in Sec. 3.2that the
+SPM has a high effect on the ﬁnal prediction performance.The results of SDPN C show that the mutual distillationapproach gains 20.6% on the test set. This technique canenhance both the L
+l2gandLg2l, resulting in improved 1D-
+TCN and BLSTM. This success is also veriﬁed by [9].
+Effect of Lrcloss and Lcmd loss. Seen from Tab. 5,
+based on the SDPN C model the SDPN D combines the Lrc,
+which is effective in enhancing performance. Speciﬁcally,
+when SDPN D drops the w(.;), it gives a worse result, it
+shows the effect of entropy measurement. Moreover, SDPNE, achieves relatively better performance, which validatesthe need for linguistic prior supervision.
+10777
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:34:29 UTC from IEEE Xplore.  Restrictions apply. Table 7. Performance comparison of local temporal perception
+module with distinct temporal window widths on the RWTH-2014. FtandFt(d)correspond to the 1D temporal convolution
+layer with kernel of tand dilation of d, respectively.
+Method variants windows Dev Test
+1D-TCNF3-F3-F3 7*2 19.5 20.1
+F3(1)-F 3(2) 7*2 19.8 20.3
+F5-F5 9*2 20.6 20.6
+F5-F5-F5 13*2 19.9 20.6
+F7-F7 13*2 20.1 20.3
+Table 8. Comparison of CTCA with distinct global temporal per-ception modules (GTPM) on the RWTH-2014.
+Method variants Dev Test
+GTPM-branchBLSTM 19.5 20.1
+Dilated blocks 22.2 22.6
+Transformer 28.7 28.9
+Transformer+BLSTM 24.4 24.1
+5.4. Module Analysis
+Other choices of knowledge fusion schemes. In Tab. 6,w e
+compare distinct knowledge fusion schemes based on our
+SDPN, including the knowledge distillation strategies (up-
+per part of Tab. 6) and feature fusion strategies (bottom
+of Tab. 6). Speciﬁcally, all schemes use only SPM and
+BLSTM in testing and all knowledge distillation schemesdistill knowledge from 1D-TCN to BLSTM. We observethat feature fusion strategies have limited promotion andeven worse results than the SDPN, while all knowledgedistillation schemes gained an improvement by the SDPN.This validates the effectiveness of knowledge distillationand shows that simply concatenating or summing featureslacks the constraint for 1D-TCN and BLSTM to guide themto possess context knowledge of the other. And the attentionmechanism only learns the correlation between 1D-TCNand BLSTM, neglecting context knowledge transferring.
+Impact of different distillation objects. The Tab. 6also
+shows the performance of using intermediate feature hints
+versus prediction scores as distillation objects. The Wasser-stein distance [3, 7] and JMMD [ 19] enforce to align the
+intermediate feature distributions. And the CKD [28] dis-tills signiﬁcant activation values in each channel of inter-mediate feature hints. Further, based on the CKD our L
+l2g
+weights the distillation by the intersection information ofintermediate feature hints. On the other hand, the vanilladistillation [11] is designed for aligning glosses predictionscores, gives the worst performance. Overall, results sug-gest that adopting intermediate feature hints as distillationobjects is more effective than employing prediction scoresto teach how to generate the desired output.
+Impact of different temporal window widths of 1D-TCN. Tab. 7delivers that the window width designed to ap-
+proximate the average length of isolated sign [6] performs
+the best. (Since half of the frames are selected for train-ing, i.e., SFL [22], the actual window width needs to be
+multiplied by 2). Whereas, variants of 1D-TCN with sub-
+stantially different window widths (ranging from 14 to 26)do not show a signiﬁcant performance gap. We explain thatvariants of 1D-TCN can learn sign-wise knowledge through
+global context guidance optimized by the L
+g2l, which re-
+lieves the effect of receptive ﬁeld discrepancy.
+Other choices of global temporal perception modules.
+Tab. 8ablates the performance of distinct global temporal
+perception modules, such as BLSTM, Dilated blocks [24],Transformer [2, 22], and Transformer+BLSTM. The
+BLSTM achieves the best performance. The plausible rea-son is that sign language videos have a semantic sequencewith grammatical rules, which means both forward andbackward frames should be taken into consideration [25],which BLSTM achieves natively. However, Transformer isunable to do it to learn the semantic sequence well.
+6. Conclusion
+In this work, we have extensively studied the limitation
+and desired properties of the temporal aggregation module(TAM) in the continuous sign language recognition frame-work. In particular, with an advanced analysis tool (i.e.,information stored in weights [31]), we showed that the
+desired TAM should be a shallow architecture to allowmore effective training of spatial perception module butalso should be a deep one for a high temporal aggregationcapability. To achieve this property, we proposed cross-temporal context aggregation (CTCA) with a dual-path net-work. Moreover, we proposed a cross-context knowledgedistillation loss function to transfer the local temporal con-text and the linguistic prior to the global perception mod-ule. Extensive experimental results demonstrated that ourCTCA effectively enhances the generalization of the spa-tial perception module while achieving the leading accuracywith fewer parameters and higher efﬁciency.
+Limitations. In the redesign of the temporal aggre-
+gation module, the improvement of global temporal con-text perception still follows the current scheme, which stilltends to cause overﬁtting. Therefore ﬁnding a more suit-able global temporal context perception for the weakly su-pervised CSLR task is a challenge to be solved. Meanwhile,the CTCA is not tested on real-world with complex scenes,which deserves further study.
+Acknowledgments. This work was supported by the
+National Natural Science Foundation of China (61906135,62020106004, 92048301, 62276141), and the TianjinResearch Innovation Project for Postgraduate Students(2021YJSB244). It was also supported by A*STAR Cen-tre for Frontier AI Research.
+10778
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:34:29 UTC from IEEE Xplore.  Restrictions apply. References
+[1] Necati Cihan Camgoz, Simon Hadﬁeld, Oscar Koller, Her-
+mann Ney, and Richard Bowden. Neural sign language trans-
+lation. In CVPR, 2018. 1,6
+[2] Necati Cihan Camgoz, Oscar Koller, Simon Hadﬁeld, and
+Richard Bowden. Sign language transformers: Joint end-to-end sign language recognition and translation. In CVPR,
+2020. 6,7,8
+[3] Liqun Chen, Zhe Gan, Y u Cheng, Linjie Li, Lawrence Carin,
+and Jingjing Liu. Graph optimal transport for cross-domainalignment. In ICML, 2020. 7,8
+[4] Y utong Chen, Fangyun Wei, Xiao Sun, Zhirong Wu, and
+Stephen Lin. A simple multi-modality transfer learning base-line for sign language translation. In CVPR, 2022. 6
+[5] Ka Leong Cheng, Zhaoyang Yang, Qifeng Chen, and Y u-
+Wing Tai. Fully convolutional networks for continuous signlanguage recognition. In ECCV, 2020. 3,6,7
+[6] Runpeng Cui, Hu Liu, and Changshui Zhang. A deep neu-
+ral framework for continuous sign language recognition byiterative training. TMM, 21(7), 2019. 2,6,7,8
+[7] Marco Cuturi. Sinkhorn distances: Lightspeed computa-
+tion of optimal transport. In C. J. C. Burges, L. Bottou,M. Welling, Z. Ghahramani, and K. Q. Weinberger, editors,NIPS, 2013. 8
+[8] Alex Graves, Santiago Fern ´andez, Faustino Gomez, and
+J¨urgen Schmidhuber. Connectionist temporal classiﬁcation:
+labelling unsegmented sequence data with recurrent neuralnetworks. In ICML, 2006. 1,2
+[9] Aiming Hao, Y uecong Min, and Xilin Chen. Self-mutual dis-
+tillation learning for continuous sign language recognition.InICCV, 2021. 1,2,3,4,6,7
+[10] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun.
+Deep residual learning for image recognition. In CVPR,
+2016. 3
+[11] Geoffrey Hinton, Oriol Vinyals, Jeff Dean, et al. Distill-
+ing the knowledge in a neural network. arXiv preprint
+arXiv:1503.02531, 2(7), 2015. 2,4,7,8
+[12] Jie Huang, Wengang Zhou, Qilin Zhang, Houqiang Li, and
+Weiping Li. Video-based sign language recognition without
+temporal segmentation. In AAAI, 2018. 7
+[13] Edwin T Jaynes. Information theory and statistical mechan-
+ics. Physical review, 106(4), 1957. 5
+[14] Oscar Koller, Necati Cihan Camgoz, Hermann Ney, and
+Richard Bowden. Weakly supervised learning with multi-stream cnn-lstm-hmms to discover sequential parallelism insign language videos. PAMI, 42(9), 2019. 6
+[15] Oscar Koller, Jens Forster, and Hermann Ney. Continuous
+sign language recognition: Towards large vocabulary statisti-cal recognition systems handling multiple signers. Computer
+Vision and Image Understanding, 141, 2015. 1,3,6
+[16] Xu Lan, Xiatian Zhu, and Shaogang Gong. Knowledge
+distillation by on-the-ﬂy native ensemble. In Samy Ben-gio, Hanna M. Wallach, Hugo Larochelle, Kristen Grauman,Nicol `o Cesa-Bianchi, and Roman Garnett, editors, NIPS,
+2018. 2,4[17] Zekang Liu Lianyu Hu, Liqing Gao and Wei Feng. Tempo-
+ral lift pooling for continuous sign language recognition. In
+ECCV. Springer, 2022. 4,6
+[18] Hu Liu, Sheng Jin, and Changshui Zhang. Connectionist
+temporal classiﬁcation with maximum entropy regulariza-
+tion. NIPS, 31, 2018. 5
+[19] Mingsheng Long, Han Zhu, Jianmin Wang, and Michael I
+Jordan. Deep transfer learning with joint adaptation net-works. In ICML. PMLR, 2017. 7,8
+[20] Y uecong Min, Aiming Hao, Xiujuan Chai, and Xilin Chen.
+Visual alignment constraint for continuous sign languagerecognition. In ICCV, 2021. 1,2,3,4,6,7
+[21] Y uecong Min, Peiqi Jiao, Yanan Li, Xiaotao Wang, Lei Lei,
+Xiujuan Chai, and Xilin Chen. Deep radial embedding forvisual sequence learning. In ECCV, 2022. 2,6
+[22] Zhe Niu and Brian Mak. Stochastic ﬁne-grained labeling of
+multi-state sign glosses for continuous sign language recog-nition. In ECCV, 2020. 6,8
+[23] Junfu Pu, Wengang Zhou, Hezhen Hu, and Houqiang Li.
+Boosting continuous sign language recognition via crossmodality augmentation. In ACMMM, 2020. 6
+[24] Junfu Pu, Wengang Zhou, and Houqiang Li. Dilated convo-
+lutional network with iterative optimization for continuoussign language recognition. In IJCAI, 2018. 8
+[25] Junfu Pu, Wengang Zhou, and Houqiang Li. Iterative align-
+ment network for continuous sign language recognition. InCVPR, 2019. 1,2,7,8
+[26] Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya
+Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry,Amanda Askell, Pamela Mishkin, Jack Clark, et al. Learn-ing transferable visual models from natural language super-vision. In ICML. PMLR, 2021. 5
+[27] Karsten Roth, Oriol Vinyals, and Zeynep Akata. Integrating
+language guidance into vision-based deep metric learning. InCVPR, 2022. 2,5
+[28] Changyong Shu, Yifan Liu, Jianfei Gao, Zheng Yan, and
+Chunhua Shen. Channel-wise knowledge distillation fordense prediction. In ICCV, 2021. 5,7,8
+[29] Ashish V aswani, Noam Shazeer, Niki Parmar, Jakob Uszko-
+reit, Llion Jones, Aidan N Gomez, Łukasz Kaiser, and Illia
+Polosukhin. Attention is all you need. In NIPS, 2017. 5
+[30] Yikai Wang, Wenbing Huang, Fuchun Sun, Tingyang Xu,
+Y u Rong, and Junzhou Huang. Deep multimodal fusion by
+channel exchanging. NIPS, 33, 2020. 2
+[31] Zifeng Wang, Shao-Lun Huang, Ercan Engin Kuruoglu, Ji-
+meng Sun, Xi Chen, and Yefeng Zheng. Pac-bayes informa-tion bottleneck. In ICLR, 2022. 1,2,3,8
+[32] Peizhen Zhang, Zijian Kang, Tong Yang, Xiangyu Zhang,
+Nanning Zheng, and Jian Sun. Lgd: label-guided self-
+distillation for object detection. In AAAI, volume 36, 2022.
+2
+[33] Hao Zhou, Wengang Zhou, Weizhen Qi, Junfu Pu, and
+Houqiang Li. Improving sign language translation with
+monolingual data by sign back-translation. In CVPR, 2021.
+1,6,7
+[34] Hao Zhou, Wengang Zhou, Y un Zhou, and Houqiang Li.
+Spatial-temporal multi-cue network for continuous sign lan-
+guage recognition. In AAAI, volume 34, 2020. 3
+10779
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:34:29 UTC from IEEE Xplore.  Restrictions apply. [35] Y uanen Zhou, Meng Wang, Daqing Liu, Zhenzhen Hu, and
+Hanwang Zhang. More grounded image captioning by dis-
+tilling image-text matching model. In CVPR, 2020. 2
+[36] Ronglai Zuo and Brian Mak. C2slr: Consistency-enhanced
+continuous sign language recognition. In CVPR, 2022. 1,2,
+3,6
+10780
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:34:29 UTC from IEEE Xplore.  Restrictions apply. 

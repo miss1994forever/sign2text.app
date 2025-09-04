@@ -5,12 +5,53 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type CameraViewProps = {
   isActive: boolean;
+  onPhotoTaken?: (base64: string) => void;
 };
 
-// Rename the component to avoid duplicate declaration error
-function CameraViewComponent({ isActive }: CameraViewProps) {
+// Create a forwardRef component to properly handle camera ref
+const CameraViewComponent = React.forwardRef<ExpoCameraView, CameraViewProps>(({ isActive, onPhotoTaken }, ref) => {
   const [facing, setFacing] = React.useState<CameraType>('front');
   const [permission, requestPermission] = useCameraPermissions();
+
+  // Function to take a photo - defined outside of useEffect to avoid recreation
+  const takePhoto = React.useCallback(async () => {
+    const camera = ref as React.RefObject<ExpoCameraView>;
+    if (!camera?.current || !onPhotoTaken) return;
+
+    try {
+      const photo = await camera.current.takePictureAsync({
+        base64: true,
+        quality: 0.5,
+        exif: false, // Don't include EXIF data to reduce payload size
+        skipProcessing: true // Get raw data faster
+      });
+
+      if (photo.base64) {
+        onPhotoTaken(photo.base64);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+    }
+  }, [onPhotoTaken]);
+
+  // Start taking photos when isActive becomes true
+  React.useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+
+    if (isActive && onPhotoTaken) {
+      interval = setInterval(takePhoto, 1000);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [isActive, takePhoto, onPhotoTaken]);
+
+  const toggleCameraFacing = React.useCallback(() => {
+    setFacing(current => (current === 'back' ? 'front' : 'back'));
+  }, []);
 
   if (!permission) {
     // Camera permissions are still loading.
@@ -33,14 +74,13 @@ function CameraViewComponent({ isActive }: CameraViewProps) {
     );
   }
 
-  function toggleCameraFacing() {
-    setFacing(current => (current === 'back' ? 'front' : 'back'));
-  }
-
   return (
     <View style={styles.container}>
-      {/* CameraView does not support children, so use absolute positioning for overlays */}
-      <ExpoCameraView style={styles.camera} facing={facing} />
+      <ExpoCameraView
+        ref={ref}
+        style={styles.camera}
+        facing={facing}
+      />
       <View style={StyleSheet.absoluteFill}>
         <View style={styles.buttonContainer}>
           <TouchableOpacity style={styles.button} onPress={toggleCameraFacing}>
@@ -55,7 +95,7 @@ function CameraViewComponent({ isActive }: CameraViewProps) {
       </View>
     </View>
   );
-}
+});
 
 export default CameraViewComponent;
 

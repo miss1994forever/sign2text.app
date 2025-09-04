@@ -1,107 +1,122 @@
 // SignLanguageTranslator/components/SignLanguage/SignLanguageDetector.tsx
-import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
-import { Camera } from 'expo-camera';
-import * as tf from '@tensorflow/tfjs';
-import { cameraWithTensors } from '@tensorflow/tfjs-react-native';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
+import signLanguageService from '../services/signLanguageService';
 import CameraView from './CameraView';
 import TranslationDisplay from './TranslationDisplay';
-
-// Load required TensorFlow packages
-import '@tensorflow/tfjs-react-native';
-
-export default function SignLanguageDetector() {
-  const [model, setModel] = useState(null);
-  const [translatedText, setTranslatedText] = useState('');
-  const [isModelReady, setIsModelReady] = useState(false);
-  const cameraRef = useRef(null);
-
-  // Load model on component mount
-  useEffect(() => {
-    loadModel();
-  }, []);
-
-  // Function to load TensorFlow model
-  const loadModel = async () => {
-    try {
-      await tf.ready();
-      console.log('TensorFlow is ready');
-
-      // Replace with your model path - you'd need to include your model in the assets
-      // const modelPath = require('../../assets/model/model.json');
-      // const model = await tf.loadLayersModel(modelPath);
-
-      // For demonstration purposes, we'll just simulate a model
-      setTimeout(() => {
-        setIsModelReady(true);
-        console.log('Model loaded successfully');
-      }, 2000);
-    } catch (error) {
-      console.error('Failed to load model:', error);
-    }
-  };
-
-  // Process a camera frame
-  const processFrame = async (frame) => {
-    if (!isModelReady) return;
-
-    try {
-      // In a real implementation, you'd convert the frame to a tensor
-      // and pass it to your model
-
-      // For demonstration, we'll simulate model prediction
-      // In a real app, you'd do something like:
-      // const tensor = tf.browser.fromPixels(frame);
-      // const resized = tf.image.resizeBilinear(tensor, [224, 224]);
-      // const normalized = resized.div(127.5).sub(1);
-      // const batched = normalized.expandDims(0);
-      // const prediction = await model.predict(batched);
-
-      // Simulate different translations
-      const gestures = ["Hello", "Thank you", "Please", "Help", "Yes", "No"];
-      const randomGesture = gestures[Math.floor(Math.random() * gestures.length)];
-      setTranslatedText(randomGesture);
-    } catch (error) {
-      console.error('Error processing frame:', error);
-    }
-  };
-
-  // Process frames at regular intervals
-  useEffect(() => {
-    if (isModelReady) {
-      const interval = setInterval(() => {
-        processFrame();
-      }, 1000); // Process every second
-
-      return () => clearInterval(interval);
-    }
-  }, [isModelReady]);
-
-  return (
-    <View style={styles.container}>
-      {!isModelReady && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0000ff" />
-        </View>
-      )}
-      <CameraView />
-      <TranslationDisplay text={translatedText} />
-    </View>
-  );
-}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  loadingContainer: {
+  cameraButton: {
+    position: 'absolute',
+    bottom: 30,
+    alignSelf: 'center',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  loadingOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.3)',
-    zIndex: 1000,
+    justifyContent: 'center',
+    alignItems: 'center',
   }
+});
+
+export default function SignLanguageDetector() {
+  const cameraRef = useRef<Camera>(null);
+  const [isActive, setIsActive] = useState(false);
+  const [translatedText, setTranslatedText] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    signLanguageService.start((text) => {
+      setTranslatedText(text);
+    });
+
+    return () => {
+      signLanguageService.stop();
+    };
+  }, []);
+
+  const handlePhotoTaken = async (base64: string) => {
+    try {
+      console.log('Processing photo...');
+      const result = await signLanguageService.processFrame(base64);
+      if (result) {
+        setTranslatedText(result);
+      }
+    } catch (error) {
+      console.error('Error processing frame:', error);
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    if (cameraRef.current && !isProcessing) {
+      try {
+        setIsProcessing(true);
+        const photo = await cameraRef.current.takePictureAsync({
+          base64: true,
+          quality: 0.5,
+          exif: false,
+          skipProcessing: true
+        });
+        
+        if (photo.base64) {
+          await handlePhotoTaken(photo.base64);
+        }
+      } catch (error) {
+        console.error('Error taking photo:', error);
+      } finally {
+        setIsProcessing(false);
+      }
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <CameraView 
+        ref={cameraRef}
+        isActive={isActive}
+        onPhotoTaken={handlePhotoTaken}
+      />
+      <TranslationDisplay text={translatedText} />
+      
+      <TouchableOpacity 
+        style={styles.cameraButton}
+        onPress={handleTakePhoto}
+        disabled={isProcessing}
+      >
+        <Ionicons 
+          name="camera" 
+          size={32} 
+          color={isProcessing ? '#999' : '#000'} 
+        />
+      </TouchableOpacity>
+
+      {isProcessing && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#ffffff" />
+        </View>
+      )}
+    </View>
+  );
+}

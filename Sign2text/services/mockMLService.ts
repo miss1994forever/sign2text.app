@@ -1,7 +1,9 @@
 // SignLanguageTranslator/services/mockMLService.ts
+import { ITranslationService } from './types';
+
 export type TranslationCallback = (text: string) => void;
 
-class MockMLService {
+class MockMLService implements ITranslationService {
   private isRunning: boolean = false;
   private intervalId: NodeJS.Timeout | null = null;
   private currentText: string = '';

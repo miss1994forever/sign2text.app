@@ -29,22 +29,9 @@
 		E09A47FB2E68F45F00BF7531 /* sign2text-appUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "sign2text-appUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		E05395012E695E7000C19865 /* Exceptions for "sign2text-app" folder in "sign2text-app" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = E09A47E02E68F45D00BF7531 /* sign2text-app */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		E09A47E32E68F45D00BF7531 /* sign2text-app */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				E05395012E695E7000C19865 /* Exceptions for "sign2text-app" folder in "sign2text-app" target */,
-			);
 			path = "sign2text-app";
 			sourceTree = "<group>";
 		};
@@ -409,8 +396,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"sign2text-app/Preview Content\"";
+				DEVELOPMENT_TEAM = 7RLKS54LSY;
 				ENABLE_PREVIEWS = YES;
-				INFOPLIST_FILE = "sign2text-app/Info.plist";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Camera access is required to translate sign language into text.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -438,8 +427,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"sign2text-app/Preview Content\"";
+				DEVELOPMENT_TEAM = 7RLKS54LSY;
 				ENABLE_PREVIEWS = YES;
-				INFOPLIST_FILE = "sign2text-app/Info.plist";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Camera access is required to translate sign language into text.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

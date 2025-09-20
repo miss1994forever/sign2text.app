@@ -22,6 +22,12 @@ class TranslationService: ObservableObject {
     @Published var isModelLoaded = true
     @Published var currentModel = "Demo"
     @Published var translationHistory: [String] = []
+    
+    // MARK: - Translation Display Properties
+    
+    @Published var translationTextColor: Color = .primary
+    @Published var translationBackgroundColor: Color = .clear
+    @Published var translationFontSize: CGFloat = 18.0
 
     // MARK: - Private Properties
 
@@ -107,6 +113,17 @@ class TranslationService: ObservableObject {
     /// Clears the translation history
     func clearHistory() {
         translationHistory.removeAll()
+    }
+    
+    /// Updates the translation text appearance
+    func updateTranslationAppearance(
+        textColor: Color = .primary,
+        backgroundColor: Color = .clear,
+        fontSize: CGFloat = 18.0
+    ) {
+        translationTextColor = textColor
+        translationBackgroundColor = backgroundColor
+        translationFontSize = fontSize
     }
 
     // MARK: - Private Methods

@@ -13,12 +13,14 @@ import SwiftUI
 struct SignScribeApp: App {
     @StateObject private var cameraManager = CameraManager()
     @StateObject private var translationService = TranslationService()
+    @StateObject private var themeManager = ThemeManager()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(cameraManager)
                 .environmentObject(translationService)
+                .environmentObject(themeManager)
         }
     }
 }

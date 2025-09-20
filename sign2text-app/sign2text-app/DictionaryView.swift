@@ -18,6 +18,7 @@ struct DictionaryView: View {
     // MARK: - State Properties
     @Environment(\.dismiss) private var dismiss
     @StateObject private var dictionaryManager = DictionaryManager()
+    @EnvironmentObject var themeManager: ThemeManager
 
     @State private var searchText = ""
     @State private var selectedCategory: SignLanguageCategory = .general
@@ -61,11 +62,13 @@ struct DictionaryView: View {
             }
             .navigationTitle("Sign Dictionary")
             .navigationBarTitleDisplayMode(.large)
+            .background(themeManager.colors.background)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Close") {
                         dismiss()
                     }
+                    .foregroundColor(themeManager.colors.primaryText)
                 }
 
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -79,6 +82,7 @@ struct DictionaryView: View {
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
+                            .foregroundColor(themeManager.colors.primaryText)
                     }
                 }
             }
@@ -87,6 +91,7 @@ struct DictionaryView: View {
                     dictionaryManager: dictionaryManager,
                     selectedImages: $selectedImages
                 )
+                .environmentObject(themeManager)
             }
             .photosPicker(
                 isPresented: $showingImagePicker,
@@ -96,6 +101,7 @@ struct DictionaryView: View {
             )
         }
         .navigationViewStyle(StackNavigationViewStyle())
+        .preferredColorScheme(themeManager.currentTheme.colorScheme)
         .onAppear {
             dictionaryManager.loadWords()
         }
@@ -108,22 +114,23 @@ struct DictionaryView: View {
             // Search bar
             HStack {
                 Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.colors.secondaryText)
 
                 TextField("Search words...", text: $searchText)
                     .textFieldStyle(PlainTextFieldStyle())
+                    .foregroundColor(themeManager.colors.primaryText)
 
                 if !searchText.isEmpty {
                     Button("Clear") {
                         searchText = ""
                     }
                     .font(.caption)
-                    .foregroundColor(.blue)
+                    .foregroundColor(themeManager.colors.accent)
                 }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .background(Color.gray.opacity(0.1))
+            .background(themeManager.colors.secondaryBackground)
             .cornerRadius(10)
 
             // Category filter
@@ -132,7 +139,8 @@ struct DictionaryView: View {
                     ForEach(SignLanguageCategory.allCases, id: \.self) { category in
                         CategoryChip(
                             category: category,
-                            isSelected: selectedCategory == category
+                            isSelected: selectedCategory == category,
+                            themeManager: themeManager
                         ) {
                             selectedCategory = category
                         }
@@ -143,7 +151,7 @@ struct DictionaryView: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
-        .background(Color.white)
+        .background(themeManager.colors.background)
     }
 
     // MARK: - Word List View
@@ -157,7 +165,7 @@ struct DictionaryView: View {
                 spacing: 12
             ) {
                 ForEach(filteredWords) { word in
-                    WordCard(word: word) {
+                    WordCard(word: word, themeManager: themeManager) {
                         // TODO: Handle word tap (show details, edit, etc.)
                     }
                 }
@@ -172,12 +180,12 @@ struct DictionaryView: View {
         VStack(spacing: 16) {
             Image(systemName: "book.closed")
                 .font(.system(size: 60))
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.colors.secondaryText)
 
             Text("No Words Found")
                 .font(.title2)
                 .fontWeight(.medium)
-                .foregroundColor(.primary)
+                .foregroundColor(themeManager.colors.primaryText)
 
             if searchText.isEmpty {
                 Text(
@@ -203,6 +211,7 @@ struct DictionaryView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(themeManager.colors.background)
     }
 
     // MARK: - Add Word Button
@@ -219,11 +228,11 @@ struct DictionaryView: View {
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
             .padding()
-            .background(Color.blue)
+            .background(themeManager.colors.accent)
             .cornerRadius(12)
         }
         .padding()
-        .background(Color.white)
+        .background(themeManager.colors.background)
     }
 }
 
@@ -232,6 +241,7 @@ struct DictionaryView: View {
 struct CategoryChip: View {
     let category: SignLanguageCategory
     let isSelected: Bool
+    let themeManager: ThemeManager
     let onTap: () -> Void
 
     var body: some View {
@@ -247,10 +257,10 @@ struct CategoryChip: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(
-                isSelected ? Color.blue : Color.gray.opacity(0.2)
+                isSelected ? themeManager.colors.accent : themeManager.colors.secondaryBackground
             )
             .foregroundColor(
-                isSelected ? .white : .primary
+                isSelected ? .white : themeManager.colors.primaryText
             )
             .cornerRadius(16)
         }
@@ -262,6 +272,7 @@ struct CategoryChip: View {
 
 struct WordCard: View {
     let word: SignLanguageWord
+    let themeManager: ThemeManager
     let onTap: () -> Void
 
     var body: some View {
@@ -269,16 +280,16 @@ struct WordCard: View {
             VStack(alignment: .leading, spacing: 8) {
                 // Image placeholder or actual image
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.gray.opacity(0.2))
+                    .fill(themeManager.colors.secondaryBackground)
                     .frame(height: 120)
                     .overlay(
                         VStack {
                             Image(systemName: "photo")
                                 .font(.title)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(themeManager.colors.secondaryText)
                             Text("No Image")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(themeManager.colors.secondaryText)
                         }
                     )
 
@@ -287,13 +298,13 @@ struct WordCard: View {
                     Text(word.word)
                         .font(.headline)
                         .fontWeight(.semibold)
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.colors.primaryText)
                         .lineLimit(1)
 
                     if let description = word.description, !description.isEmpty {
                         Text(description)
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(themeManager.colors.secondaryText)
                             .lineLimit(2)
                     }
 
@@ -303,21 +314,21 @@ struct WordCard: View {
 
                         Text(word.category.rawValue)
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(themeManager.colors.secondaryText)
 
                         Spacer()
 
                         Text("No images")
                             .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(themeManager.colors.secondaryText)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(12)
-            .background(Color.white)
+            .background(themeManager.colors.cardBackground)
             .cornerRadius(12)
-            .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+            .shadow(color: themeManager.colors.shadow, radius: 2, x: 0, y: 1)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -329,6 +340,7 @@ struct AddWordView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var dictionaryManager: DictionaryManager
     @Binding var selectedImages: [String]
+    @EnvironmentObject var themeManager: ThemeManager
 
     @State private var wordText = ""
     @State private var wordDescription = ""
@@ -342,10 +354,12 @@ struct AddWordView: View {
                 Section("Word Information") {
                     TextField("Word or phrase", text: $wordText)
                         .font(.body)
+                        .foregroundColor(themeManager.colors.primaryText)
 
                     TextField("Description (optional)", text: $wordDescription, axis: .vertical)
                         .lineLimit(2...4)
                         .font(.body)
+                        .foregroundColor(themeManager.colors.primaryText)
 
                     Picker("Category", selection: $selectedCategory) {
                         ForEach(SignLanguageCategory.allCases, id: \.self) { category in
@@ -390,6 +404,7 @@ struct AddWordView: View {
                     .foregroundColor(.secondary)
                 }
             }
+            .background(themeManager.colors.background)
             .navigationTitle("Add New Word")
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
@@ -399,6 +414,7 @@ struct AddWordView: View {
                     Button("Cancel") {
                         dismiss()
                     }
+                    .foregroundColor(themeManager.colors.primaryText)
                 }
 
                 ToolbarItem(placement: .primaryAction) {
@@ -407,11 +423,11 @@ struct AddWordView: View {
                     }
                     .disabled(wordText.isEmpty)
                     .fontWeight(.semibold)
-                    .fontWeight(.semibold)
+                    .foregroundColor(themeManager.colors.accent)
                 }
             }
-            // Image loading would be implemented here in a real application
         }
+        .preferredColorScheme(themeManager.currentTheme.colorScheme)
         #if os(iOS)
             .navigationViewStyle(StackNavigationViewStyle())
         #endif
@@ -421,6 +437,24 @@ struct AddWordView: View {
         let newWord = SignLanguageWord(
             word: wordText.trimmingCharacters(in: .whitespacesAndNewlines),
             description: wordDescription.isEmpty
+                ? nil : wordDescription.trimmingCharacters(in: .whitespacesAndNewlines),
+            category: selectedCategory,
+            addedBy: "User"  // TODO: Get actual user info
+        )
+
+        dictionaryManager.addWord(newWord)
+        dismiss()
+    }
+}
+
+
+// MARK: - Preview Provider
+
+struct DictionaryView_Previews: PreviewProvider {
+    static var previews: some View {
+        DictionaryView()
+    }
+}
                 ? nil : wordDescription.trimmingCharacters(in: .whitespacesAndNewlines),
             category: selectedCategory,
             addedBy: "User"  // TODO: Get actual user info

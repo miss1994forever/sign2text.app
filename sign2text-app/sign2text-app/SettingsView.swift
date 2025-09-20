@@ -11,6 +11,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var themeManager: ThemeManager
 
     @State private var selectedModelType = "Dummy"
     @State private var cameraPosition = "Front"
@@ -22,6 +23,38 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             Form {
+                Section(header: Text("Appearance")) {
+                    HStack {
+                        Text("Theme")
+                        Spacer()
+                        Menu {
+                            ForEach(ThemeManager.AppTheme.allCases, id: \.self) { theme in
+                                Button {
+                                    themeManager.setTheme(theme)
+                                } label: {
+                                    HStack {
+                                        Image(systemName: theme.icon)
+                                        Text(theme.rawValue)
+                                        if themeManager.currentTheme == theme {
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                }
+                            }
+                        } label: {
+                            HStack {
+                                Image(systemName: themeManager.currentTheme.icon)
+                                Text(themeManager.currentTheme.rawValue)
+                            }
+                            .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    Text("Choose between light, dark, or system appearance")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
                 Section(header: Text("Translation Model")) {
                     HStack {
                         Text("Current Model")
@@ -127,12 +160,14 @@ struct SettingsView: View {
                 }
             }
         }
+        .preferredColorScheme(themeManager.currentTheme.colorScheme)
     }
 }
 
 // MARK: - History View
 struct HistoryView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var themeManager: ThemeManager
 
     @State private var translations = [
         HistoryItem(text: "你好", timestamp: Date()),
@@ -153,15 +188,17 @@ struct HistoryView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(item.text)
                                 .font(.headline)
+                                .foregroundColor(themeManager.colors.primaryText)
 
                             Text(item.timestamp, style: .relative)
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(themeManager.colors.secondaryText)
                         }
                         .padding(.vertical, 4)
                     }
                 }
             }
+            .background(themeManager.colors.background)
             .navigationTitle("Translation History")
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
@@ -183,6 +220,7 @@ struct HistoryView: View {
                 }
             }
         }
+        .preferredColorScheme(themeManager.currentTheme.colorScheme)
     }
 }
 

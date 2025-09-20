@@ -18,6 +18,7 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var cameraManager = CameraManager()
     @StateObject private var translationService = TranslationService()
+    @EnvironmentObject var themeManager: ThemeManager
 
     @State private var isTranslating = false
     @State private var transcriptions: [String] = []
@@ -29,7 +30,7 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color.black.edgesIgnoringSafeArea(.all)
+                themeManager.colors.background.edgesIgnoringSafeArea(.all)
 
                 VStack(spacing: 0) {
                     // Header
@@ -37,7 +38,7 @@ struct ContentView: View {
                         Text("SignScribe")
                             .font(.title2)
                             .fontWeight(.bold)
-                            .foregroundColor(.white)
+                            .foregroundColor(themeManager.colors.primaryText)
 
                         Spacer()
 
@@ -45,19 +46,19 @@ struct ContentView: View {
                             Button(action: { showingHistory = true }) {
                                 Image(systemName: "clock.arrow.circlepath")
                                     .font(.title3)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(themeManager.colors.primaryText)
                             }
 
                             Button(action: { showingDictionary = true }) {
                                 Image(systemName: "book.closed")
                                     .font(.title3)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(themeManager.colors.primaryText)
                             }
 
                             Button(action: { showingSettings = true }) {
                                 Image(systemName: "gear")
                                     .font(.title3)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(themeManager.colors.primaryText)
                             }
                         }
                     }
@@ -96,15 +97,15 @@ struct ContentView: View {
                         } else {
                             // Fallback view if camera isn't ready
                             Rectangle()
-                                .fill(Color.black)
+                                .fill(themeManager.colors.secondaryBackground)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                                 .overlay(
                                     VStack {
                                         Image(systemName: "camera.fill")
                                             .font(.system(size: 50))
-                                            .foregroundColor(.white.opacity(0.6))
+                                            .foregroundColor(themeManager.colors.secondaryText)
                                         Text(cameraManager.errorMessage ?? "Camera Ready")
-                                            .foregroundColor(.white.opacity(0.8))
+                                            .foregroundColor(themeManager.colors.primaryText)
                                             .font(.headline)
                                             .multilineTextAlignment(.center)
                                             .padding(.horizontal)
@@ -131,7 +132,7 @@ struct ContentView: View {
                         HStack {
                             Text("Real-time Translation")
                                 .font(.headline)
-                                .foregroundColor(.primary)
+                                .foregroundColor(themeManager.colors.primaryText)
 
                             Spacer()
 
@@ -153,7 +154,7 @@ struct ContentView: View {
                                     if transcriptions.isEmpty {
                                         Text("Start translation to see results here...")
                                             .font(.body)
-                                            .foregroundColor(.secondary)
+                                            .foregroundColor(themeManager.colors.secondaryText)
                                             .italic()
                                     } else {
                                         ForEach(Array(transcriptions.enumerated()), id: \.offset) {
@@ -161,12 +162,12 @@ struct ContentView: View {
                                             HStack(alignment: .top, spacing: 8) {
                                                 Text("\(index + 1)")
                                                     .font(.caption)
-                                                    .foregroundColor(.secondary)
+                                                    .foregroundColor(themeManager.colors.secondaryText)
                                                     .frame(width: 20, alignment: .leading)
 
                                                 Text(text)
                                                     .font(.body)
-                                                    .foregroundColor(.primary)
+                                                    .foregroundColor(themeManager.colors.translationText)
                                                     .frame(maxWidth: .infinity, alignment: .leading)
                                             }
                                             .padding(.vertical, 4)
@@ -187,7 +188,7 @@ struct ContentView: View {
                         }
                     }
                     .padding()
-                    .background(Color.gray.opacity(0.1))
+                    .background(themeManager.colors.secondaryBackground)
                     .cornerRadius(12)
                     .frame(height: 150)
                     .padding(.horizontal)
@@ -231,10 +232,10 @@ struct ContentView: View {
                                     Text("Clear")
                                 }
                                 .font(.subheadline)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(themeManager.colors.secondaryText)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
-                                .background(Color.gray.opacity(0.2))
+                                .background(themeManager.colors.secondaryBackground)
                                 .cornerRadius(20)
                             }
                             .disabled(transcriptions.isEmpty)
@@ -245,10 +246,10 @@ struct ContentView: View {
                                     Text("Export")
                                 }
                                 .font(.subheadline)
-                                .foregroundColor(.blue)
+                                .foregroundColor(themeManager.colors.accent)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
-                                .background(Color.blue.opacity(0.1))
+                                .background(themeManager.colors.accent.opacity(0.1))
                                 .cornerRadius(20)
                             }
                             .disabled(transcriptions.isEmpty)
@@ -264,24 +265,24 @@ struct ContentView: View {
 
                 if !cameraManager.permissionGranted {
                     ZStack {
-                        Color.black.opacity(0.85)
+                        themeManager.colors.background.opacity(0.95)
                             .edgesIgnoringSafeArea(.all)
 
                         VStack(spacing: 20) {
                             Image(systemName: "camera.fill")
                                 .font(.system(size: 60))
-                                .foregroundColor(.white)
+                                .foregroundColor(themeManager.colors.primaryText)
 
                             Text("Camera Permission Required")
                                 .font(.title2)
                                 .fontWeight(.bold)
-                                .foregroundColor(.white)
+                                .foregroundColor(themeManager.colors.primaryText)
                                 .multilineTextAlignment(.center)
 
                             Text(
                                 "SignScribe needs camera access to translate sign language into text in real-time."
                             )
-                            .foregroundColor(.white.opacity(0.8))
+                            .foregroundColor(themeManager.colors.secondaryText)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
 
@@ -294,7 +295,7 @@ struct ContentView: View {
                                     .fontWeight(.semibold)
                                     .foregroundColor(.white)
                                     .frame(width: 200, height: 50)
-                                    .background(Color.blue)
+                                    .background(themeManager.colors.accent)
                                     .cornerRadius(10)
                                 }
 
@@ -304,12 +305,12 @@ struct ContentView: View {
                                         Text("Try Again")
                                     }
                                     .fontWeight(.medium)
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(themeManager.colors.accent)
                                     .frame(width: 200, height: 50)
                                     .background(Color.clear)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 10)
-                                            .stroke(Color.blue, lineWidth: 1)
+                                            .stroke(themeManager.colors.accent, lineWidth: 1)
                                     )
                                 }
                             }
@@ -323,17 +324,21 @@ struct ContentView: View {
         #if os(iOS)
             .navigationViewStyle(StackNavigationViewStyle())
         #endif
+        .preferredColorScheme(themeManager.currentTheme.colorScheme)
         .onAppear {
             setupTranslation()
         }
         .sheet(isPresented: $showingDictionary) {
-            DictionaryPlaceholderView()
+            DictionaryView()
+                .environmentObject(themeManager)
         }
         .sheet(isPresented: $showingSettings) {
-            SettingsPlaceholderView()
+            SettingsView()
+                .environmentObject(themeManager)
         }
         .sheet(isPresented: $showingHistory) {
-            HistoryPlaceholderView()
+            HistoryView()
+                .environmentObject(themeManager)
         }
     }
 
@@ -494,6 +499,28 @@ struct HistoryPlaceholderView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
 
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("History")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Preview
+
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+    }
+}
                 Spacer()
             }
             .padding()

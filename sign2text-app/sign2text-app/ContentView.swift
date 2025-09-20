@@ -521,25 +521,3 @@ struct ContentView_Previews: PreviewProvider {
         ContentView()
     }
 }
-                Spacer()
-            }
-            .padding()
-            .navigationTitle("History")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Preview
-
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
-    }
-}

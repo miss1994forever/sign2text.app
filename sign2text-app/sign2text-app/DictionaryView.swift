@@ -447,25 +447,6 @@ struct AddWordView: View {
     }
 }
 
-
-// MARK: - Preview Provider
-
-struct DictionaryView_Previews: PreviewProvider {
-    static var previews: some View {
-        DictionaryView()
-    }
-}
-                ? nil : wordDescription.trimmingCharacters(in: .whitespacesAndNewlines),
-            category: selectedCategory,
-            addedBy: "User"  // TODO: Get actual user info
-        )
-
-        dictionaryManager.addWord(newWord)
-        dismiss()
-    }
-}
-
-
 // MARK: - Preview Provider
 
 struct DictionaryView_Previews: PreviewProvider {

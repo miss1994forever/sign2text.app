@@ -13,20 +13,25 @@ import SwiftUI
 #if canImport(UIKit)
     import UIKit
 
-struct CameraPreview: UIViewRepresentable {
-    let previewLayer: AVCaptureVideoPreviewLayer
+    struct CameraPreview: UIViewRepresentable {
+        let previewLayer: AVCaptureVideoPreviewLayer
 
-    func makeUIView(context: Context) -> CameraPreviewView {
-        let view = CameraPreviewView()
-        // Add the layer as soon as the view is made
-        view.layer.addSublayer(previewLayer)
-        return view
-    }
+        init(previewLayer: AVCaptureVideoPreviewLayer) {
+            self.previewLayer = previewLayer
+            previewLayer.videoGravity = .resizeAspectFill
+        }
 
-    func updateUIView(_ uiView: CameraPreviewView, context: Context) {
-        // The frame will be updated by the layoutSubviews in the CameraPreviewView
+        func makeUIView(context: Context) -> CameraPreviewView {
+            let view = CameraPreviewView()
+            // Add the layer as soon as the view is made
+            view.layer.addSublayer(previewLayer)
+            return view
+        }
+
+        func updateUIView(_ uiView: CameraPreviewView, context: Context) {
+            // The frame will be updated by the layoutSubviews in the CameraPreviewView
+        }
     }
-}
 
     // MARK: - Custom UIView for Camera Preview
 
@@ -303,3 +308,5 @@ struct CameraPreview_Previews: PreviewProvider {
         .previewDisplayName("Camera Components")
     }
 }
+
+

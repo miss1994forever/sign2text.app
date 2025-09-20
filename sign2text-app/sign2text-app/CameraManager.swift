@@ -7,17 +7,11 @@
 
 import AVFoundation
 import Combine
-import CoreImage
-import Foundation
 import SwiftUI
-
-#if canImport(UIKit)
-    import UIKit
-#endif
 
 // MARK: - Camera Manager
 
-class CameraManager: NSObject, ObservableObject {
+class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     // MARK: - Published Properties
 
     /// Published camera output for SwiftUI views
@@ -437,7 +431,7 @@ class CameraManager: NSObject, ObservableObject {
 
 // MARK: - AVCaptureVideoDataOutputSampleBufferDelegate
 
-extension CameraManager: AVCaptureVideoDataOutputSampleBufferDelegate {
+extension CameraManager {
     func captureOutput(
         _ output: AVCaptureOutput,
         didOutput sampleBuffer: CMSampleBuffer,

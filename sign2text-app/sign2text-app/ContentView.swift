@@ -6,7 +6,6 @@
 //
 
 import AVFoundation
-
 import SwiftUI
 
 
@@ -17,14 +16,15 @@ import SwiftUI
 // MARK: - ContentView
 
 struct ContentView: View {
-    @EnvironmentObject private var cameraManager: CameraManager
-    @EnvironmentObject private var translationService: TranslationService
+    @StateObject private var cameraManager = CameraManager()
+    @StateObject private var translationService = TranslationService()
 
     @State private var isTranslating = false
     @State private var transcriptions: [String] = []
     @State private var showingDictionary = false
     @State private var showingSettings = false
     @State private var showingHistory = false
+    @State private var showPermissionAlert = false
 
     var body: some View {
         NavigationView {
@@ -65,26 +65,39 @@ struct ContentView: View {
 
                     // Camera Section
                     ZStack {
-                        // Check if the previewLayer is available from the cameraManager
                         if let previewLayer = cameraManager.previewLayer {
                             CameraPreview(
                                 previewLayer: previewLayer
                             )
-                            .frame(height: 350)
-                            // Add an overlay for status indicators like "Translating..." and FPS
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .overlay(
-                                CameraOverlay(
-                                    isTranslating: isTranslating,
-                                    isRecording: isTranslating, // You can link this to a different state if needed
-                                    frameCount: cameraManager.frameCount,
-                                    fps: cameraManager.currentFrameRate
-                                )
+                                Group {
+                                    if isTranslating {
+                                        VStack {
+                                            HStack {
+                                                Circle()
+                                                    .fill(Color.green)
+                                                    .frame(width: 8, height: 8)
+                                                Text("Translating...")
+                                                    .font(.caption)
+                                                    .foregroundColor(.white)
+                                                Spacer()
+                                                Text("FPS: \(Int(cameraManager.currentFrameRate))")
+                                                    .font(.caption)
+                                                    .foregroundColor(.white)
+                                            }
+                                            .padding(.horizontal)
+                                            .padding(.top, 8)
+                                            Spacer()
+                                        }
+                                    }
+                                }
                             )
                         } else {
                             // Fallback view if camera isn't ready
                             Rectangle()
                                 .fill(Color.black)
-                                .frame(height: 350)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
                                 .overlay(
                                     VStack {
                                         Image(systemName: "camera.fill")
@@ -102,12 +115,15 @@ struct ContentView: View {
                     .cornerRadius(12)
                     .padding(.horizontal)
                     .onAppear {
-                        // Start the camera session when the view appears
-                        cameraManager.startSession()
+                        cameraManager.checkPermission()
                     }
-                    .onDisappear {
-                        // Stop the camera session when the view disappears to save battery
-                        cameraManager.stopSession()
+                    .alert("Camera Permission Required", isPresented: $showPermissionAlert) {
+                        Button("Open Settings", role: .none) {
+                            if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(settingsURL)
+                            }
+                        }
+                        Button("Cancel", role: .cancel) {}
                     }
 
                     // Transcription Section
@@ -331,10 +347,12 @@ struct ContentView: View {
 
     private func toggleTranslation() {
         isTranslating.toggle()
-
+        
         if isTranslating {
+            cameraManager.startSession()
             translationService.startTranslation()
         } else {
+            cameraManager.stopSession()
             translationService.stopTranslation()
         }
     }
@@ -357,11 +375,9 @@ struct ContentView: View {
     }
 
     private func openSettings() {
-        #if canImport(UIKit)
-            if let url = URL(string: UIApplication.openSettingsURLString) {
-                UIApplication.shared.open(url)
-            }
-        #endif
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url)
+        }
     }
 }
 

@@ -36,20 +36,48 @@ struct SignLanguageWord: Identifiable, Codable {
     let word: String
     let description: String?
     let category: SignLanguageCategory
-    let images: [String]  // File paths to reference images
+    let mediaFiles: [MediaFile]  // Videos and images for this word
     let dateAdded: Date
     let addedBy: String?
+    var isCloudSynced: Bool = false
+    var cloudURL: String?
 
     init(
         word: String, description: String? = nil, category: SignLanguageCategory = .general,
-        images: [String] = [], addedBy: String? = nil
+        mediaFiles: [MediaFile] = [], addedBy: String? = nil
     ) {
         self.word = word
         self.description = description
         self.category = category
-        self.images = images
+        self.mediaFiles = mediaFiles
         self.dateAdded = Date()
         self.addedBy = addedBy
+    }
+}
+
+/// Represents a media file (video or image) for a sign language word
+struct MediaFile: Identifiable, Codable {
+    var id = UUID()
+    let fileName: String
+    let type: MediaType
+    let localPath: String?
+    let cloudURL: String?
+    let fileSize: Int64
+    let duration: TimeInterval? // For videos
+    let thumbnail: String? // Thumbnail path
+    let dateCreated: Date
+    var isCloudSynced: Bool = false
+
+    enum MediaType: String, Codable {
+        case video = "video"
+        case image = "image"
+        
+        var icon: String {
+            switch self {
+            case .video: return "video.fill"
+            case .image: return "photo.fill"
+            }
+        }
     }
 }
 

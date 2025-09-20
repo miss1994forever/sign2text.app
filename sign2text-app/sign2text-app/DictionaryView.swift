@@ -272,22 +272,13 @@ struct WordCard: View {
                     .fill(Color.gray.opacity(0.2))
                     .frame(height: 120)
                     .overlay(
-                        Group {
-                            if word.images.isEmpty {
-                                VStack {
-                                    Image(systemName: "photo")
-                                        .font(.title)
-                                        .foregroundColor(.secondary)
-                                    Text("No Image")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                            } else {
-                                // TODO: Load and display actual images
-                                Image(systemName: "photo.fill")
-                                    .font(.title)
-                                    .foregroundColor(.blue)
-                            }
+                        VStack {
+                            Image(systemName: "photo")
+                                .font(.title)
+                                .foregroundColor(.secondary)
+                            Text("No Image")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                     )
 
@@ -316,7 +307,7 @@ struct WordCard: View {
 
                         Spacer()
 
-                        Text(word.images.count == 1 ? "1 image" : "\(word.images.count) images")
+                        Text("No images")
                             .font(.caption2)
                             .foregroundColor(.secondary)
                     }
@@ -432,7 +423,6 @@ struct AddWordView: View {
             description: wordDescription.isEmpty
                 ? nil : wordDescription.trimmingCharacters(in: .whitespacesAndNewlines),
             category: selectedCategory,
-            images: [],  // TODO: Save images and store file paths
             addedBy: "User"  // TODO: Get actual user info
         )
 
@@ -441,51 +431,6 @@ struct AddWordView: View {
     }
 }
 
-// MARK: - Dictionary Manager
-
-class DictionaryManager: ObservableObject {
-    @Published var words: [SignLanguageWord] = []
-
-    private let documentsPath = FileManager.default.urls(
-        for: .documentDirectory, in: .userDomainMask)[0]
-    private var wordsFileURL: URL {
-        documentsPath.appendingPathComponent("sign_language_words.json")
-    }
-
-    func loadWords() {
-        // Load sample words for demonstration
-        loadSampleWords()
-    }
-
-    func saveWords() {
-        // In a real implementation, this would save to disk
-        print("Saving \(words.count) words")
-    }
-
-    func addWord(_ word: SignLanguageWord) {
-        words.append(word)
-        saveWords()
-    }
-
-    func removeWord(_ word: SignLanguageWord) {
-        words.removeAll { $0.id == word.id }
-        saveWords()
-    }
-
-    private func loadSampleWords() {
-        words = [
-            SignLanguageWord(word: "Hello", description: "Basic greeting", category: .greetings),
-            SignLanguageWord(
-                word: "Thank you", description: "Expression of gratitude", category: .greetings),
-            SignLanguageWord(word: "Please", description: "Polite request", category: .greetings),
-            SignLanguageWord(word: "Sorry", description: "Apology", category: .emotions),
-            SignLanguageWord(word: "Happy", description: "Feeling of joy", category: .emotions),
-            SignLanguageWord(word: "Sad", description: "Feeling of sorrow", category: .emotions),
-            SignLanguageWord(word: "Water", description: "H2O, liquid to drink", category: .food),
-            SignLanguageWord(word: "Food", description: "Something to eat", category: .food),
-        ]
-    }
-}
 
 // MARK: - Preview Provider
 
@@ -494,3 +439,4 @@ struct DictionaryView_Previews: PreviewProvider {
         DictionaryView()
     }
 }
+

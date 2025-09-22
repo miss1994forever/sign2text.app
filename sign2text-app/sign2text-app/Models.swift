@@ -53,6 +53,11 @@ struct SignLanguageWord: Identifiable, Codable {
         self.dateAdded = Date()
         self.addedBy = addedBy
     }
+    
+    // Custom coding keys to handle all properties
+    enum CodingKeys: String, CodingKey {
+        case id, word, description, category, mediaFiles, dateAdded, addedBy, isCloudSynced, cloudURL
+    }
 }
 
 /// Represents a media file (video or image) for a sign language word

@@ -43,19 +43,33 @@ struct ContentView: View {
                         Spacer()
 
                         HStack(spacing: 16) {
-                            Button(action: { showingHistory = true }) {
+                            Button(action: { 
+                                print("📈 History button tapped")
+                                showingHistory = true 
+                            }) {
                                 Image(systemName: "clock.arrow.circlepath")
                                     .font(.title3)
                                     .foregroundColor(themeManager.colors.primaryText)
                             }
 
-                            Button(action: { showingDictionary = true }) {
+                            Button(action: { 
+                                print("📚 Dictionary button tapped - attempting to show dictionary")
+                                do {
+                                    showingDictionary = true 
+                                    print("📚 Dictionary state set to true")
+                                } catch {
+                                    print("📚 Error setting dictionary state: \(error)")
+                                }
+                            }) {
                                 Image(systemName: "book.closed")
                                     .font(.title3)
                                     .foregroundColor(themeManager.colors.primaryText)
                             }
 
-                            Button(action: { showingSettings = true }) {
+                            Button(action: { 
+                                print("⚙️ Settings button tapped")
+                                showingSettings = true 
+                            }) {
                                 Image(systemName: "gear")
                                     .font(.title3)
                                     .foregroundColor(themeManager.colors.primaryText)
@@ -327,6 +341,16 @@ struct ContentView: View {
         .preferredColorScheme(themeManager.currentTheme.colorScheme)
         .onAppear {
             setupTranslation()
+            print("🚀 ContentView appeared")
+        }
+        .onChange(of: showingDictionary) { oldValue, newValue in
+            print("📚 Dictionary sheet state changed: \(oldValue) -> \(newValue)")
+        }
+        .onChange(of: showingSettings) { oldValue, newValue in
+            print("⚙️ Settings sheet state changed: \(oldValue) -> \(newValue)")
+        }
+        .onChange(of: showingHistory) { oldValue, newValue in
+            print("📈 History sheet state changed: \(oldValue) -> \(newValue)")
         }
         .sheet(isPresented: $showingDictionary) {
             DictionaryView()

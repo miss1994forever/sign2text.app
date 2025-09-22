@@ -17,7 +17,7 @@ import SwiftUI
 struct DictionaryView: View {
     // MARK: - State Properties
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var dictionaryManager = DictionaryManager()
+    @StateObject private var dictionaryManager: DictionaryManager
     @EnvironmentObject var themeManager: ThemeManager
 
     @State private var searchText = ""
@@ -25,6 +25,12 @@ struct DictionaryView: View {
     @State private var showingAddWordSheet = false
     @State private var showingImagePicker = false
     @State private var selectedImages: [String] = []  // Store image paths instead of image objects
+
+    // MARK: - Initialization
+    init() {
+        print("📚 Initializing DictionaryView...")
+        self._dictionaryManager = StateObject(wrappedValue: DictionaryManager())
+    }
 
     // MARK: - Computed Properties
 
@@ -45,11 +51,35 @@ struct DictionaryView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
+                // Show error message if there's one
+                if let errorMessage = dictionaryManager.errorMessage {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle")
+                            .foregroundColor(.orange)
+                        Text(errorMessage)
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                        Spacer()
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    .background(Color.orange.opacity(0.1))
+                }
+
                 // Header with search and filters
                 headerSection
 
                 // Content area
-                if filteredWords.isEmpty {
+                if dictionaryManager.isLoading {
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                        Text("Loading dictionary...")
+                            .font(.headline)
+                            .foregroundColor(themeManager.colors.secondaryText)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if filteredWords.isEmpty {
                     emptyStateView
                 } else {
                     wordListView
@@ -57,8 +87,10 @@ struct DictionaryView: View {
 
                 Spacer()
 
-                // Add new word button
-                addWordButton
+                // Add new word button (only show if not loading)
+                if !dictionaryManager.isLoading {
+                    addWordButton
+                }
             }
             .navigationTitle("Sign Dictionary")
             .navigationBarTitleDisplayMode(.large)
@@ -66,6 +98,7 @@ struct DictionaryView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Close") {
+                        print("📚 Closing DictionaryView")
                         dismiss()
                     }
                     .foregroundColor(themeManager.colors.primaryText)
@@ -103,6 +136,7 @@ struct DictionaryView: View {
         .navigationViewStyle(StackNavigationViewStyle())
         .preferredColorScheme(themeManager.currentTheme.colorScheme)
         .onAppear {
+            print("📚 DictionaryView appeared")
             dictionaryManager.loadWords()
         }
     }
@@ -452,6 +486,7 @@ struct AddWordView: View {
 struct DictionaryView_Previews: PreviewProvider {
     static var previews: some View {
         DictionaryView()
+            .environmentObject(ThemeManager())
     }
 }
 

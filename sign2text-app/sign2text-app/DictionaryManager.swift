@@ -7,72 +7,68 @@
 
 import Foundation
 import SwiftUI
-import CloudKit
-import AVFoundation
 
 // MARK: - Dictionary Manager
 
-/// Manages the sign language dictionary including local storage and cloud synchronization
+/// Manages the sign language dictionary with simplified, safe implementation
 class DictionaryManager: ObservableObject {
     @Published var words: [SignLanguageWord] = []
+    @Published var isLoading = false
+    @Published var errorMessage: String?
     @Published var isCloudSyncEnabled = false
     @Published var isSyncing = false
     @Published var syncError: String?
     
-    private let localStorageManager = LocalStorageManager()
-    private let cloudManager = CloudDictionaryManager()
+    private let userDefaults = UserDefaults.standard
+    private let wordsKey = "SavedSignLanguageWords"
     
     // MARK: - Initialization
     
     init() {
-        loadLocalDictionary()
-        setupCloudSync()
+        print("📚 Initializing DictionaryManager...")
+        loadWords()
     }
     
     // MARK: - Public Methods
     
-    /// Adds a new word to the dictionary
-    func addWord(_ word: SignLanguageWord) {
-        words.append(word)
-        saveLocalDictionary()
+    /// Loads words from storage
+    func loadWords() {
+        print("📚 Loading words...")
+        isLoading = true
+        errorMessage = nil
         
-        if isCloudSyncEnabled {
-            uploadToCloud(word)
-        }
-    }
-    
-    /// Adds media file to an existing word
-    func addMediaToWord(wordId: UUID, mediaFile: MediaFile) {
-        if let index = words.firstIndex(where: { $0.id == wordId }) {
-            var updatedWord = words[index]
-            var updatedMediaFiles = updatedWord.mediaFiles
-            updatedMediaFiles.append(mediaFile)
+        // Load on background queue to avoid blocking UI
+        DispatchQueue.global(qos: .background).async { [weak self] in
+            guard let self = self else { return }
             
-            // Create new word instance with updated media files
-            words[index] = SignLanguageWord(
-                word: updatedWord.word,
-                description: updatedWord.description,
-                category: updatedWord.category,
-                mediaFiles: updatedMediaFiles,
-                addedBy: updatedWord.addedBy
-            )
+            let loadedWords = self.loadWordsFromUserDefaults()
             
-            saveLocalDictionary()
-            
-            if isCloudSyncEnabled {
-                uploadMediaToCloud(mediaFile)
+            DispatchQueue.main.async {
+                self.words = loadedWords
+                self.isLoading = false
+                
+                // Add sample words if dictionary is empty
+                if self.words.isEmpty {
+                    self.loadSampleWords()
+                }
+                
+                print("📚 Successfully loaded \(self.words.count) words")
             }
         }
     }
     
+    /// Adds a new word to the dictionary
+    func addWord(_ word: SignLanguageWord) {
+        print("📚 Adding new word: \(word.word)")
+        words.append(word)
+        saveWords()
+    }
+    
     /// Removes a word from the dictionary
     func removeWord(_ wordId: UUID) {
+        print("📚 Removing word with ID: \(wordId)")
         words.removeAll { $0.id == wordId }
-        saveLocalDictionary()
-        
-        if isCloudSyncEnabled {
-            removeFromCloud(wordId)
-        }
+        saveWords()
     }
     
     /// Searches words in the dictionary
@@ -91,255 +87,113 @@ class DictionaryManager: ObservableObject {
         return words.filter { $0.category == category }
     }
     
-    /// Loads words (for compatibility with existing DictionaryView)
-    func loadWords() {
-        loadLocalDictionary()
+    // MARK: - Private Methods
+    
+    private func loadWordsFromUserDefaults() -> [SignLanguageWord] {
+        print("📚 Loading words from UserDefaults...")
+        
+        guard let data = userDefaults.data(forKey: wordsKey) else {
+            print("📚 No saved dictionary data found")
+            return []
+        }
+        
+        do {
+            let decoder = JSONDecoder()
+            let words = try decoder.decode([SignLanguageWord].self, from: data)
+            print("📚 Successfully decoded \(words.count) words from storage")
+            return words
+        } catch {
+            print("📚 Failed to decode words: \(error.localizedDescription)")
+            
+            // Clear corrupted data
+            userDefaults.removeObject(forKey: wordsKey)
+            
+            DispatchQueue.main.async { [weak self] in
+                self?.errorMessage = "Failed to load saved dictionary. Starting fresh."
+            }
+            return []
+        }
     }
     
-    // MARK: - Cloud Sync Methods
+    private func saveWords() {
+        print("📚 Saving \(words.count) words to storage...")
+        
+        do {
+            let encoder = JSONEncoder()
+            let data = try encoder.encode(words)
+            userDefaults.set(data, forKey: wordsKey)
+            userDefaults.synchronize() // Force save
+            print("📚 Successfully saved words to UserDefaults")
+        } catch {
+            print("📚 Failed to save words: \(error.localizedDescription)")
+            DispatchQueue.main.async { [weak self] in
+                self?.errorMessage = "Failed to save dictionary changes."
+            }
+        }
+    }
+    
+    private func loadSampleWords() {
+        print("📚 Loading sample words...")
+        
+        let sampleWords: [SignLanguageWord] = [
+            SignLanguageWord(
+                word: "Hello", 
+                description: "Basic greeting", 
+                category: .greetings, 
+                addedBy: "System"
+            ),
+            SignLanguageWord(
+                word: "Thank you", 
+                description: "Expression of gratitude", 
+                category: .greetings, 
+                addedBy: "System"
+            ),
+            SignLanguageWord(
+                word: "Please", 
+                description: "Polite request", 
+                category: .greetings, 
+                addedBy: "System"
+            ),
+            SignLanguageWord(
+                word: "Sorry", 
+                description: "Apology", 
+                category: .emotions, 
+                addedBy: "System"
+            ),
+            SignLanguageWord(
+                word: "Happy", 
+                description: "Feeling of joy", 
+                category: .emotions, 
+                addedBy: "System"
+            ),
+            SignLanguageWord(
+                word: "Water", 
+                description: "H2O, liquid to drink", 
+                category: .food, 
+                addedBy: "System"
+            ),
+            SignLanguageWord(
+                word: "Food", 
+                description: "Something to eat", 
+                category: .food, 
+                addedBy: "System"
+            )
+        ]
+        
+        words = sampleWords
+        saveWords()
+        print("📚 Loaded \(sampleWords.count) sample words")
+    }
+    
+    // MARK: - Cloud Sync Methods (Simplified)
     
     func enableCloudSync() {
         isCloudSyncEnabled = true
-        syncWithCloud()
+        print("📚 Cloud sync enabled")
     }
     
     func disableCloudSync() {
         isCloudSyncEnabled = false
+        print("📚 Cloud sync disabled")
     }
-    
-    private func syncWithCloud() {
-        guard isCloudSyncEnabled else { return }
-        
-        isSyncing = true
-        
-        Task {
-            do {
-                let cloudWords = try await cloudManager.fetchAllWords()
-                
-                DispatchQueue.main.async {
-                    // Merge cloud and local data
-                    self.mergeCloudData(cloudWords)
-                    self.isSyncing = false
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    self.syncError = error.localizedDescription
-                    self.isSyncing = false
-                }
-            }
-        }
-    }
-    
-    private func uploadToCloud(_ word: SignLanguageWord) {
-        Task {
-            try await cloudManager.uploadWord(word)
-        }
-    }
-    
-    private func uploadMediaToCloud(_ mediaFile: MediaFile) {
-        Task {
-            try await cloudManager.uploadMedia(mediaFile)
-        }
-    }
-    
-    private func removeFromCloud(_ wordId: UUID) {
-        Task {
-            try await cloudManager.removeWord(wordId)
-        }
-    }
-    
-    private func mergeCloudData(_ cloudWords: [SignLanguageWord]) {
-        // Simple merge strategy - could be enhanced with conflict resolution
-        let localWordIds = Set(words.map { $0.id })
-        let newCloudWords = cloudWords.filter { !localWordIds.contains($0.id) }
-        
-        words.append(contentsOf: newCloudWords)
-        saveLocalDictionary()
-    }
-    
-    // MARK: - Local Storage Methods
-    
-    private func loadLocalDictionary() {
-        words = localStorageManager.loadWords()
-        
-        // Load sample words if dictionary is empty
-        if words.isEmpty {
-            loadSampleWords()
-        }
-    }
-    
-    /// Loads sample words for demonstration
-    private func loadSampleWords() {
-        words = [
-            SignLanguageWord(word: "Hello", description: "Basic greeting", category: .greetings),
-            SignLanguageWord(
-                word: "Thank you", description: "Expression of gratitude", category: .greetings),
-            SignLanguageWord(word: "Please", description: "Polite request", category: .greetings),
-            SignLanguageWord(word: "Sorry", description: "Apology", category: .emotions),
-            SignLanguageWord(word: "Happy", description: "Feeling of joy", category: .emotions),
-            SignLanguageWord(word: "Sad", description: "Feeling of sorrow", category: .emotions),
-            SignLanguageWord(word: "Water", description: "H2O, liquid to drink", category: .food),
-            SignLanguageWord(word: "Food", description: "Something to eat", category: .food),
-        ]
-        saveLocalDictionary()
-    }
-    
-    private func saveLocalDictionary() {
-        localStorageManager.saveWords(words)
-    }
-    
-    private func setupCloudSync() {
-        // Check if user has iCloud enabled
-        if CloudKitManager.shared.isAvailable {
-            isCloudSyncEnabled = true
-        }
-    }
-}
-
-// MARK: - Local Storage Manager
-
-class LocalStorageManager {
-    private let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-    private let dictionaryFileName = "sign_language_dictionary.json"
-    private let mediaDirectory = "sign_language_media"
-    
-    private var dictionaryURL: URL {
-        documentsDirectory.appendingPathComponent(dictionaryFileName)
-    }
-    
-    private var mediaDirectoryURL: URL {
-        documentsDirectory.appendingPathComponent(mediaDirectory)
-    }
-    
-    init() {
-        createMediaDirectoryIfNeeded()
-    }
-    
-    func saveWords(_ words: [SignLanguageWord]) {
-        do {
-            let data = try JSONEncoder().encode(words)
-            try data.write(to: dictionaryURL)
-        } catch {
-            print("Failed to save dictionary: \(error)")
-        }
-    }
-    
-    func loadWords() -> [SignLanguageWord] {
-        guard FileManager.default.fileExists(atPath: dictionaryURL.path) else {
-            return []
-        }
-        
-        do {
-            let data = try Data(contentsOf: dictionaryURL)
-            return try JSONDecoder().decode([SignLanguageWord].self, from: data)
-        } catch {
-            print("Failed to load dictionary: \(error)")
-            return []
-        }
-    }
-    
-    func saveMedia(data: Data, fileName: String) -> String? {
-        let fileURL = mediaDirectoryURL.appendingPathComponent(fileName)
-        
-        do {
-            try data.write(to: fileURL)
-            return fileURL.path
-        } catch {
-            print("Failed to save media file: \(error)")
-            return nil
-        }
-    }
-    
-    func deleteMedia(at path: String) {
-        let url = URL(fileURLWithPath: path)
-        try? FileManager.default.removeItem(at: url)
-    }
-    
-    private func createMediaDirectoryIfNeeded() {
-        if !FileManager.default.fileExists(atPath: mediaDirectoryURL.path) {
-            try? FileManager.default.createDirectory(at: mediaDirectoryURL, withIntermediateDirectories: true)
-        }
-    }
-}
-
-// MARK: - Cloud Dictionary Manager
-
-class CloudDictionaryManager {
-    private let container = CKContainer.default()
-    private let database: CKDatabase
-    
-    init() {
-        database = container.privateCloudDatabase
-    }
-    
-    func fetchAllWords() async throws -> [SignLanguageWord] {
-        let query = CKQuery(recordType: "SignLanguageWord", predicate: NSPredicate(value: true))
-        let result = try await database.records(matching: query)
-        
-        return result.matchResults.compactMap { _, result in
-            switch result {
-            case .success(let record):
-                return convertRecordToWord(record)
-            case .failure:
-                return nil
-            }
-        }
-    }
-    
-    func uploadWord(_ word: SignLanguageWord) async throws {
-        let record = convertWordToRecord(word)
-        try await database.save(record)
-    }
-    
-    func uploadMedia(_ mediaFile: MediaFile) async throws {
-        // Implementation for uploading media files to CloudKit
-        // This would involve creating CKAsset for large files
-    }
-    
-    func removeWord(_ wordId: UUID) async throws {
-        let recordID = CKRecord.ID(recordName: wordId.uuidString)
-        try await database.deleteRecord(withID: recordID)
-    }
-    
-    private func convertWordToRecord(_ word: SignLanguageWord) -> CKRecord {
-        let record = CKRecord(recordType: "SignLanguageWord", recordID: CKRecord.ID(recordName: word.id.uuidString))
-        record["word"] = word.word
-        record["description"] = word.description
-        record["category"] = word.category.rawValue
-        record["dateAdded"] = word.dateAdded
-        record["addedBy"] = word.addedBy
-        return record
-    }
-    
-    private func convertRecordToWord(_ record: CKRecord) -> SignLanguageWord? {
-        guard let word = record["word"] as? String,
-              let categoryString = record["category"] as? String,
-              let category = SignLanguageCategory(rawValue: categoryString),
-              let dateAdded = record["dateAdded"] as? Date else {
-            return nil
-        }
-        
-        let description = record["description"] as? String
-        let addedBy = record["addedBy"] as? String
-        
-        return SignLanguageWord(
-            word: word,
-            description: description,
-            category: category,
-            mediaFiles: [], // Media files would be loaded separately
-            addedBy: addedBy
-        )
-    }
-}
-
-// MARK: - CloudKit Manager
-
-class CloudKitManager {
-    static let shared = CloudKitManager()
-    
-    var isAvailable: Bool {
-        return FileManager.default.ubiquityIdentityToken != nil
-    }
-    
-    private init() {}
 }

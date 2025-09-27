@@ -168,33 +168,68 @@ struct SettingsView: View {
 struct HistoryView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var themeManager: ThemeManager
-
-    @State private var translations = [
-        HistoryItem(text: "你好", timestamp: Date()),
-        HistoryItem(text: "谢谢", timestamp: Date().addingTimeInterval(-300)),
-        HistoryItem(text: "再见", timestamp: Date().addingTimeInterval(-600)),
-    ]
+    @EnvironmentObject var translationService: TranslationService
 
     var body: some View {
         NavigationView {
             List {
-                if translations.isEmpty {
-                    Text("No translation history")
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding()
+                let sessions = translationService.getTranslationHistory()
+                
+                if sessions.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 40))
+                            .foregroundColor(themeManager.colors.secondaryText)
+                        
+                        Text("No translation history")
+                            .font(.headline)
+                            .foregroundColor(themeManager.colors.primaryText)
+                        
+                        Text("Start translating to see your history here")
+                            .font(.body)
+                            .foregroundColor(themeManager.colors.secondaryText)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding()
                 } else {
-                    ForEach(translations) { item in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(item.text)
-                                .font(.headline)
+                    ForEach(Array(sessions.enumerated()), id: \.offset) { index, session in
+                        VStack(alignment: .leading, spacing: 8) {
+                            // Translation text
+                            Text(session.translationText)
+                                .font(.body)
                                 .foregroundColor(themeManager.colors.primaryText)
-
-                            Text(item.timestamp, style: .relative)
-                                .font(.caption)
-                                .foregroundColor(themeManager.colors.secondaryText)
+                                .lineLimit(nil)
+                            
+                            // Translation time (absolute time, not relative)
+                            HStack {
+                                Image(systemName: "clock")
+                                    .font(.caption)
+                                    .foregroundColor(themeManager.colors.secondaryText)
+                                
+                                Text("Started at \(session.displayTime)")
+                                    .font(.caption)
+                                    .foregroundColor(themeManager.colors.secondaryText)
+                                
+                                Spacer()
+                                
+                                if session.isComplete {
+                                    Text("Completed")
+                                        .font(.caption)
+                                        .foregroundColor(.green)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 2)
+                                        .background(Color.green.opacity(0.1))
+                                        .cornerRadius(4)
+                                }
+                            }
                         }
                         .padding(.vertical, 4)
+                        .swipeActions(edge: .trailing) {
+                            Button("Delete", role: .destructive) {
+                                // TODO: Implement delete functionality
+                            }
+                        }
                     }
                 }
             }
@@ -204,19 +239,20 @@ struct HistoryView: View {
                 .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button("Done") {
                         dismiss()
                     }
                 }
 
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        translations.removeAll()
-                    } label: {
-                        Image(systemName: "trash")
+                if !translationService.getTranslationHistory().isEmpty {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button {
+                            translationService.clearHistory()
+                        } label: {
+                            Image(systemName: "trash")
+                        }
                     }
-                    .disabled(translations.isEmpty)
                 }
             }
         }

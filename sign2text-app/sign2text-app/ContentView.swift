@@ -16,12 +16,13 @@ import SwiftUI
 // MARK: - ContentView
 
 struct ContentView: View {
-    @StateObject private var cameraManager = CameraManager()
-    @StateObject private var translationService = TranslationService()
+    @EnvironmentObject var cameraManager: CameraManager
+    @EnvironmentObject var translationService: TranslationService
     @EnvironmentObject var themeManager: ThemeManager
 
     @State private var isTranslating = false
-    @State private var transcriptions: [String] = []
+    @State private var currentTranslation = ""  // 当前正在构建的翻译
+    @State private var completedTranslations: [String] = []  // 已完成的翻译
     @State private var showingDictionary = false
     @State private var showingSettings = false
     @State private var showingHistory = false
@@ -130,6 +131,7 @@ struct ContentView: View {
                     .cornerRadius(12)
                     .padding(.horizontal)
                     .onAppear {
+                        setupCameraConnection()
                         cameraManager.checkPermission()
                     }
                     .alert("Camera Permission Required", isPresented: $showPermissionAlert) {
@@ -165,37 +167,62 @@ struct ContentView: View {
                         ScrollViewReader { proxy in
                             ScrollView {
                                 LazyVStack(alignment: .leading, spacing: 8) {
-                                    if transcriptions.isEmpty {
+                                    // Show completed translations
+                                    ForEach(Array(completedTranslations.enumerated()), id: \.offset) { index, text in
+                                        HStack(alignment: .top, spacing: 8) {
+                                            Text("\(index + 1)")
+                                                .font(.caption)
+                                                .foregroundColor(themeManager.colors.secondaryText)
+                                                .frame(width: 20, alignment: .leading)
+
+                                            Text(text)
+                                                .font(.body)
+                                                .foregroundColor(themeManager.colors.translationText)
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                        }
+                                        .padding(.vertical, 4)
+                                        .id("completed-\(index)")
+                                    }
+                                    
+                                    // Show current translation being built
+                                    if !currentTranslation.isEmpty {
+                                        HStack(alignment: .top, spacing: 8) {
+                                            Text("•")
+                                                .font(.caption)
+                                                .foregroundColor(themeManager.colors.accent)
+                                                .frame(width: 20, alignment: .leading)
+
+                                            Text(currentTranslation)
+                                                .font(.body)
+                                                .foregroundColor(themeManager.colors.accent)
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                        }
+                                        .padding(.vertical, 4)
+                                        .id("current")
+                                    }
+                                    
+                                    // Show placeholder when not translating
+                                    if completedTranslations.isEmpty && currentTranslation.isEmpty {
                                         Text("Start translation to see results here...")
                                             .font(.body)
                                             .foregroundColor(themeManager.colors.secondaryText)
                                             .italic()
-                                    } else {
-                                        ForEach(Array(transcriptions.enumerated()), id: \.offset) {
-                                            index, text in
-                                            HStack(alignment: .top, spacing: 8) {
-                                                Text("\(index + 1)")
-                                                    .font(.caption)
-                                                    .foregroundColor(themeManager.colors.secondaryText)
-                                                    .frame(width: 20, alignment: .leading)
-
-                                                Text(text)
-                                                    .font(.body)
-                                                    .foregroundColor(themeManager.colors.translationText)
-                                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                            }
-                                            .padding(.vertical, 4)
-                                            .id(index)
-                                        }
                                     }
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, 4)
                             }
-                            .onChange(of: transcriptions.count) { oldValue, newValue in
-                                if !transcriptions.isEmpty {
+                            .onChange(of: currentTranslation) { oldValue, newValue in
+                                if !newValue.isEmpty {
+                                    withAnimation(.easeOut(duration: 0.3)) {
+                                        proxy.scrollTo("current", anchor: .bottom)
+                                    }
+                                }
+                            }
+                            .onChange(of: completedTranslations.count) { oldValue, newValue in
+                                if newValue > 0 {
                                     withAnimation(.easeOut(duration: 0.5)) {
-                                        proxy.scrollTo(transcriptions.count - 1, anchor: .bottom)
+                                        proxy.scrollTo("completed-\(newValue - 1)", anchor: .bottom)
                                     }
                                 }
                             }
@@ -252,7 +279,7 @@ struct ContentView: View {
                                 .background(themeManager.colors.secondaryBackground)
                                 .cornerRadius(20)
                             }
-                            .disabled(transcriptions.isEmpty)
+                            .disabled(completedTranslations.isEmpty && currentTranslation.isEmpty)
 
                             Button(action: exportTranscriptions) {
                                 HStack(spacing: 6) {
@@ -266,7 +293,7 @@ struct ContentView: View {
                                 .background(themeManager.colors.accent.opacity(0.1))
                                 .cornerRadius(20)
                             }
-                            .disabled(transcriptions.isEmpty)
+                            .disabled(completedTranslations.isEmpty && currentTranslation.isEmpty)
                         }
 
                         Text("Camera ready • Model: Demo Mode")
@@ -363,13 +390,32 @@ struct ContentView: View {
         .sheet(isPresented: $showingHistory) {
             HistoryView()
                 .environmentObject(themeManager)
+                .environmentObject(translationService)
+        }
+    }
+
+    private func setupCameraConnection() {
+        // Connect camera frames to translation service
+        cameraManager.onFrameCaptured = { frame in
+            if self.isTranslating {
+                let _ = self.translationService.processFrame(frame)
+            }
         }
     }
 
     private func setupTranslation() {
-        translationService.onTranslationUpdate = { text in
+        // Setup callback for current translation updates
+        translationService.onCurrentTranslationUpdate = { text in
             DispatchQueue.main.async {
-                transcriptions.append(text)
+                self.currentTranslation = text
+            }
+        }
+        
+        // Setup callback for completed translation sessions
+        translationService.onTranslationSessionComplete = { session in
+            DispatchQueue.main.async {
+                self.completedTranslations.append(session.translationText)
+                self.currentTranslation = "" // Clear current translation
             }
         }
     }
@@ -387,11 +433,18 @@ struct ContentView: View {
     }
 
     private func clearTranscriptions() {
-        transcriptions.removeAll()
+        completedTranslations.removeAll()
+        currentTranslation = ""
+        translationService.clearHistory()
     }
 
     private func exportTranscriptions() {
-        let text = transcriptions.joined(separator: "\n")
+        var allTranslations = completedTranslations
+        if !currentTranslation.isEmpty {
+            allTranslations.append(currentTranslation)
+        }
+        let text = allTranslations.joined(separator: "\n")
+        
         #if canImport(UIKit)
             let activityVC = UIActivityViewController(
                 activityItems: [text], applicationActivities: nil)

@@ -14,56 +14,62 @@ import SwiftUI
 // MARK: - Translation Service
 
 /// A service that handles real-time translation of sign language captured via camera frames into text.
-/// Current implementation uses dummy logic for demonstration, designed to be easily replaced with a real ML model.
 class TranslationService: ObservableObject {
     // MARK: - Published Properties
 
     @Published var isTranslating = false
     @Published var isModelLoaded = true
     @Published var currentModel = "Demo"
-    @Published var translationHistory: [String] = []
+    @Published var currentTranslation: String = ""  // 当前正在构建的翻译
     
-    // MARK: - Translation Display Properties
+    // MARK: - Translation Session Management
     
-    @Published var translationTextColor: Color = .primary
-    @Published var translationBackgroundColor: Color = .clear
-    @Published var translationFontSize: CGFloat = 18.0
+    struct TranslationSession {
+        let id = UUID()
+        let startTime: Date
+        var endTime: Date?
+        var translationText: String
+        var isComplete: Bool = false
+        
+        var displayTime: String {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .none
+            formatter.timeStyle = .short
+            return formatter.string(from: startTime)
+        }
+    }
+    
+    @Published var completedSessions: [TranslationSession] = []
+    private var currentSession: TranslationSession?
 
     // MARK: - Private Properties
 
-    /// Callback to deliver translated text to the UI in real-time
-    var onTranslationUpdate: ((String) -> Void)?
+    /// Callback to deliver completed translation sessions to the UI
+    var onTranslationSessionComplete: ((TranslationSession) -> Void)?
+    
+    /// Callback to update current translation in real-time
+    var onCurrentTranslationUpdate: ((String) -> Void)?
 
     /// Callback for translation errors
     var onError: ((Error) -> Void)?
 
-    /// Timer to simulate real-time translation updates
+    /// Timer for translation updates
     private var translationTimer: Timer?
+    private var sessionTimer: Timer?
 
-    /// Example preset sentences for dummy real-time translation
-    private let dummyTranslations = [
-        "你好",
-        "谢谢",
-        "请",
-        "再见",
-        "我爱你",
-        "对不起",
-        "没关系",
-        "我需要帮助",
-        "今天天气很好",
-        "我很高兴见到你",
-        "这个多少钱？",
-        "我不明白",
-        "请再说一遍",
-        "祝你好运",
-        "生日快乐",
+    /// Example words for building sentences
+    private let dummyWords = [
+        "你好", "谢谢", "请", "再见", "我爱你", "对不起", 
+        "没关系", "我需要帮助", "今天", "天气", "很好", 
+        "我很", "高兴", "见到你", "这个", "多少钱", 
+        "我不", "明白", "请", "再说一遍", "祝你", "好运"
     ]
 
-    /// Current index in the dummy translations array
-    private var currentTranslationIndex = 0
-
-    /// Minimum interval between translations (in seconds)
-    private let translationInterval: TimeInterval = 2.0
+    /// Current word building state
+    private var currentWords: [String] = []
+    private var wordBuildingTimer: Timer?
+    private let wordInterval: TimeInterval = 1.5  // 每1.5秒添加一个词
+    private let sessionDuration: TimeInterval = 8.0  // 每8秒完成一个翻译会话
 
     // MARK: - Initialization
 
@@ -78,25 +84,46 @@ class TranslationService: ObservableObject {
         guard !isTranslating else { return }
 
         isTranslating = true
-        currentTranslationIndex = 0
+        startNewTranslationSession()
 
-        print("🚀 Starting real-time sign language translation...")
+        print("🚀 Starting real-time sign language translation session...")
 
-        // Start periodic translation simulation for real-time effect
-        translationTimer = Timer.scheduledTimer(
-            withTimeInterval: translationInterval, repeats: true
-        ) { [weak self] _ in
-            self?.simulateRealTimeTranslation()
-        }
+        // Start word building timer
+        startWordBuilding()
+        
+        // Start session completion timer
+        startSessionTimer()
     }
 
     /// Processes a single camera frame for real-time translation
-    /// - Parameter frame: The image frame from the camera
-    func processFrame(_ frame: CIImage) {
-        guard isTranslating else { return }
+    /// This is the interface for CV-SLT model integration
+    func processFrame(_ frame: CIImage) -> TranslationResult? {
+        guard isTranslating else { return nil }
 
-        // In a real implementation, this would analyze the frame for sign language gestures
-        // For now, the translation is delivered via the timer in simulateRealTimeTranslation()
+        // CV-SLT Integration Interface:
+        // 1. Input: CIImage frame from camera
+        // 2. Processing: Extract features, run through model
+        // 3. Output: TranslationResult with text and confidence
+        
+        // For now, return dummy data
+        let dummyResult = TranslationResult(
+            text: dummyWords.randomElement() ?? "hello",
+            confidence: Float.random(in: 0.7...0.95),
+            timestamp: Date(),
+            boundingBox: nil
+        )
+        
+        return dummyResult
+    }
+    
+    /// Process multiple frames (for sequence-based models like CV-SLT)
+    func processFrameSequence(_ frames: [CIImage]) -> TranslationResult? {
+        guard isTranslating, !frames.isEmpty else { return nil }
+        
+        // CV-SLT works better with frame sequences
+        // This interface allows for temporal analysis
+        
+        return processFrame(frames.last!) // Simplified for demo
     }
 
     /// Stops the real-time translation process
@@ -104,221 +131,175 @@ class TranslationService: ObservableObject {
         guard isTranslating else { return }
 
         isTranslating = false
+        
+        // Complete current session if there's content
+        completeCurrentSession()
+        
+        // Stop all timers
         translationTimer?.invalidate()
+        wordBuildingTimer?.invalidate()
+        sessionTimer?.invalidate()
+        
         translationTimer = nil
+        wordBuildingTimer = nil
+        sessionTimer = nil
 
         print("⏹️ Stopped real-time sign language translation")
     }
 
     /// Clears the translation history
     func clearHistory() {
-        translationHistory.removeAll()
+        completedSessions.removeAll()
     }
     
-    /// Updates the translation text appearance
-    func updateTranslationAppearance(
-        textColor: Color = .primary,
-        backgroundColor: Color = .clear,
-        fontSize: CGFloat = 18.0
-    ) {
-        translationTextColor = textColor
-        translationBackgroundColor = backgroundColor
-        translationFontSize = fontSize
+    /// Get all completed sessions for history display
+    func getTranslationHistory() -> [TranslationSession] {
+        return completedSessions.reversed() // Most recent first
     }
 
     // MARK: - Private Methods
-
-    /// Simulates real-time translation by delivering preset sentences
-    private func simulateRealTimeTranslation() {
-        guard isTranslating else { return }
-
-        deliverTranslation()
+    
+    private func startNewTranslationSession() {
+        currentSession = TranslationSession(
+            startTime: Date(),
+            translationText: ""
+        )
+        currentWords = []
+        currentTranslation = ""
     }
-
-    /// Delivers a translation to the UI
-    private func deliverTranslation() {
-        guard currentTranslationIndex < dummyTranslations.count else {
-            // Cycle back to the beginning
-            currentTranslationIndex = 0
-            return
+    
+    private func startWordBuilding() {
+        wordBuildingTimer = Timer.scheduledTimer(withTimeInterval: wordInterval, repeats: true) { [weak self] _ in
+            self?.addWordToCurrentTranslation()
         }
-
-        let translation = dummyTranslations[currentTranslationIndex]
-
-        // Add timestamp for real-time feel
-        let timestamp = DateFormatter.localizedString(
-            from: Date(), dateStyle: .none, timeStyle: .medium)
-        let translationWithTime = "[\(timestamp)] \(translation)"
-
-        print("🔤 Translation: \(translation)")
-
-        // Deliver translation to UI on main thread
+    }
+    
+    private func startSessionTimer() {
+        sessionTimer = Timer.scheduledTimer(withTimeInterval: sessionDuration, repeats: true) { [weak self] _ in
+            self?.completeCurrentSession()
+            self?.startNewTranslationSession()
+        }
+    }
+    
+    private func addWordToCurrentTranslation() {
+        guard isTranslating, let session = currentSession else { return }
+        
+        // Add a random word to build a sentence
+        if let newWord = dummyWords.randomElement() {
+            currentWords.append(newWord)
+            
+            // Build sentence with commas
+            let translationText = currentWords.joined(separator: ", ")
+            currentTranslation = translationText
+            
+            // Update current session
+            currentSession?.translationText = translationText
+            
+            // Notify UI of current translation update
+            DispatchQueue.main.async { [weak self] in
+                self?.onCurrentTranslationUpdate?(translationText)
+            }
+            
+            print("🔤 Building translation: \(translationText)")
+        }
+    }
+    
+    private func completeCurrentSession() {
+        guard var session = currentSession, !session.translationText.isEmpty else { return }
+        
+        session.endTime = Date()
+        session.isComplete = true
+        
+        completedSessions.append(session)
+        
+        // Notify UI of completed session
         DispatchQueue.main.async { [weak self] in
-            self?.onTranslationUpdate?(translationWithTime)
-            self?.translationHistory.append(translationWithTime)
+            self?.onTranslationSessionComplete?(session)
         }
-
-        currentTranslationIndex += 1
+        
+        print("✅ Completed translation session: \(session.translationText)")
+        
+        // Reset current translation
+        currentTranslation = ""
+        currentWords = []
+        currentSession = nil
     }
 }
 
-// MARK: - Mock AI Model (For Future Implementation)
+// MARK: - Translation Result Models
 
-/// Enhanced AI Model Manager for CV-SLT integration
-class SignLanguageModelManager {
-    enum ModelError: Error {
-        case notInitialized
-        case invalidInput
-        case processingFailed
-        case modelNotFound
-        case incompatibleFormat
-    }
+/// Result from a single frame or sequence processing
+struct TranslationResult {
+    let text: String
+    let confidence: Float
+    let timestamp: Date
+    let boundingBox: CGRect?
     
-    enum ModelType {
-        case cvSLT  // CV-SLT model
-        case custom // Custom trained model
-        case dummy  // For testing
+    init(text: String, confidence: Float, timestamp: Date = Date(), boundingBox: CGRect? = nil) {
+        self.text = text
+        self.confidence = confidence
+        self.timestamp = timestamp
+        self.boundingBox = boundingBox
     }
+}
 
-    var isLoaded = false
-    var confidenceThreshold: Float = 0.7
-    var currentModelType: ModelType = .dummy
-    var modelPath: String?
-    
-    // MARK: - CV-SLT Integration Properties
-    
-    /// Path to the CV-SLT model files
-    var cvSLTModelPath: String?
-    
-    /// Pre-processing configuration for CV-SLT
-    struct CVSLTConfig {
-        let inputFrameSize: CGSize = CGSize(width: 224, height: 224)
-        let sequenceLength: Int = 32  // Typical sequence length for sign language
-        let featureExtractor: String = "resnet"
-        let vocabularySize: Int = 1000
-        let maxTextLength: Int = 50
-    }
-    
-    let cvSLTConfig = CVSLTConfig()
+// MARK: - CV-SLT Integration Interface
 
-    func loadModel(type: ModelType = .dummy, modelPath: String? = nil) -> Bool {
-        self.currentModelType = type
-        self.modelPath = modelPath
-        
-        switch type {
-        case .cvSLT:
-            return loadCVSLTModel(at: modelPath)
-        case .custom:
-            return loadCustomModel(at: modelPath)
-        case .dummy:
-            isLoaded = true
-            return true
-        }
-    }
+extension TranslationService {
+    /// CV-SLT Model Integration Interface
+    /// This is the interface that CV-SLT model should implement
     
-    /// Load CV-SLT model specifically
-    private func loadCVSLTModel(at path: String?) -> Bool {
-        guard let path = path else {
-            print("❌ CV-SLT model path not provided")
+    struct CVSLTModelInterface {
+        /// Initialize the CV-SLT model
+        static func loadModel(modelPath: String) -> Bool {
+            // TODO: Load CV-SLT model from path
+            // Return true if successful, false otherwise
             return false
         }
         
-        // TODO: Implement actual CV-SLT model loading
-        // This would involve:
-        // 1. Loading the PyTorch model using TorchScript or CoreML conversion
-        // 2. Setting up the preprocessing pipeline
-        // 3. Initializing the vocabulary and tokenizers
+        /// Process a sequence of frames and return translation
+        static func translateFrameSequence(_ frames: [CIImage]) -> TranslationResult? {
+            // TODO: Implement CV-SLT processing
+            // 1. Preprocess frames to model input format
+            // 2. Run through CV-SLT encoder-decoder
+            // 3. Return translation with confidence
+            return nil
+        }
         
-        print("📚 Loading CV-SLT model from: \(path)")
-        print("⚙️  Model config: \(cvSLTConfig)")
-        
-        // Mock successful loading for now
-        cvSLTModelPath = path
-        isLoaded = true
-        return true
-    }
-    
-    private func loadCustomModel(at path: String?) -> Bool {
-        // Implementation for custom models
-        isLoaded = true
-        return true
-    }
-
-    func unloadModel() {
-        isLoaded = false
-        cvSLTModelPath = nil
-        modelPath = nil
-    }
-
-    /// Process video frame for CV-SLT model
-    func processFrame(_ frame: CIImage) -> (text: String, confidence: Float)? {
-        guard isLoaded else { return nil }
-        
-        switch currentModelType {
-        case .cvSLT:
-            return processCVSLTFrame(frame)
-        case .custom:
-            return processCustomFrame(frame)
-        case .dummy:
-            return processDummyFrame(frame)
+        /// Get model configuration
+        static func getModelConfig() -> ModelConfig {
+            return ModelConfig(
+                inputFrameSize: CGSize(width: 224, height: 224),
+                sequenceLength: 32,
+                vocabularySize: 1000,
+                confidenceThreshold: 0.7
+            )
         }
     }
     
-    /// Process frame sequence for better accuracy (CV-SLT works with sequences)
-    func processFrameSequence(_ frames: [CIImage]) -> (text: String, confidence: Float)? {
-        guard isLoaded, !frames.isEmpty else { return nil }
-        
-        switch currentModelType {
-        case .cvSLT:
-            return processCVSLTSequence(frames)
-        case .custom:
-            return processCustomSequence(frames)
-        case .dummy:
-            return processDummyFrame(frames.last!)
-        }
+    struct ModelConfig {
+        let inputFrameSize: CGSize
+        let sequenceLength: Int
+        let vocabularySize: Int
+        let confidenceThreshold: Float
     }
-    
-    // MARK: - CV-SLT Processing Methods
-    
-    private func processCVSLTFrame(_ frame: CIImage) -> (text: String, confidence: Float)? {
-        // TODO: Implement actual CV-SLT processing
-        // Steps would include:
-        // 1. Preprocess frame to match model input requirements
-        // 2. Extract visual features using the feature extractor
-        // 3. Run through the CV-SLT encoder-decoder architecture
-        // 4. Decode the output to text using vocabulary
-        
-        let preprocessedFrame = preprocessFrameForCVSLT(frame)
-        // Mock processing
-        return ("Hello", 0.85)
-    }
-    
-    private func processCVSLTSequence(_ frames: [CIImage]) -> (text: String, confidence: Float)? {
-        // CV-SLT works better with frame sequences
-        let preprocessedFrames = frames.map { preprocessFrameForCVSLT($0) }
-        
-        // TODO: Implement sequence processing
-        // 1. Stack frames into a temporal sequence
-        // 2. Apply temporal convolutions or transformer attention
-        // 3. Use the prior and posterior paths as described in the CV-SLT paper
-        // 4. Generate text output with confidence scores
-        
-        return ("Hello world", 0.92)
-    }
-    
-    private func preprocessFrameForCVSLT(_ frame: CIImage) -> CIImage {
-        // Preprocess frame according to CV-SLT requirements
-        // 1. Resize to input size (224x224)
-        // 2. Normalize pixel values
-        // 3. Apply any required transformations
-        
-        let transform = CGAffineTransform(
-            scaleX: cvSLTConfig.inputFrameSize.width / frame.extent.width,
-            y: cvSLTConfig.inputFrameSize.height / frame.extent.height
-        )
-        
-        return frame.transformed(by: transform)
-    }
+}
+
+
+//    private func preprocessFrameForCVSLT(_ frame: CIImage) -> CIImage {
+//        // Preprocess frame according to CV-SLT requirements
+//        // 1. Resize to input size (224x224)
+//        // 2. Normalize pixel values
+//        // 3. Apply any required transformations
+//        
+//        let transform = CGAffineTransform(
+//            scaleX: cvSLTConfig.inputFrameSize.width / frame.extent.width,
+//            y: cvSLTConfig.inputFrameSize.height / frame.extent.height
+//        )
+//        
+//        return frame.transformed(by: transform)
+//    }
+
     
     // MARK: - Fallback Processing Methods
     
@@ -339,7 +320,6 @@ class SignLanguageModelManager {
         let confidence = Float.random(in: 0.7...0.95)
         return (randomText, confidence)
     }
-}
 
 /// Model deployment helper for converting Python models to iOS
 class ModelDeploymentHelper {

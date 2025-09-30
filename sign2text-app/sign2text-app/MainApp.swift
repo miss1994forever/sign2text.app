@@ -12,12 +12,12 @@ import SwiftUI
 @main
 struct SignScribeApp: App {
     @StateObject private var cameraManager = CameraManager()
-    @StateObject private var translationService = TranslationService()
+    @StateObject private var translationService = TranslationService() // Keep for compatibility with SettingsView
     @StateObject private var themeManager = ThemeManager()
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentViewEnhanced()
                 .environmentObject(cameraManager)
                 .environmentObject(translationService)
                 .environmentObject(themeManager)

@@ -368,6 +368,8 @@ struct ContentView: View {
         .preferredColorScheme(themeManager.currentTheme.colorScheme)
         .onAppear {
             setupTranslation()
+            setupCameraConnection()
+            cameraManager.checkPermission()
             print("🚀 ContentView appeared")
         }
         .onChange(of: showingDictionary) { oldValue, newValue in
@@ -590,6 +592,9 @@ struct HistoryPlaceholderView: View {
         }
     }
 }
+
+
+
 
 // MARK: - Preview
 

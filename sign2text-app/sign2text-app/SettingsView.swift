@@ -12,6 +12,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var translationService: TranslationService
 
     @State private var selectedModelType = "Dummy"
     @State private var cameraPosition = "Front"
@@ -60,8 +61,17 @@ struct SettingsView: View {
                         Text("Current Model")
                         Spacer()
                         Menu {
-                            Button("Dummy Model") { selectedModelType = "Dummy" }
-                            Button("CV-SLT Model") { selectedModelType = "CV-SLT" }
+                            Button("Dummy Model") {
+                                selectedModelType = "Dummy"
+                                translationService.currentModel = "Demo"
+                                // 切换到模拟模式 - 不需要额外操作
+                            }
+                            Button("CV-SLT Model") {
+                                selectedModelType = "CV-SLT"
+                                translationService.currentModel = "CV-SLT"
+                                // 加载真实CoreML模型
+                                translationService.integrateRealModel()
+                            }
                         } label: {
                             Text(selectedModelType)
                                 .foregroundColor(.secondary)
@@ -69,12 +79,42 @@ struct SettingsView: View {
                     }
 
                     if selectedModelType == "CV-SLT" {
-                        HStack {
-                            Text("Status")
-                            Spacer()
-                            Text("Not Loaded")
-                                .foregroundColor(.orange)
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Status")
+                                Spacer()
+                                if translationService.isModelLoaded {
+                                    HStack {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.green)
+                                        Text("Loaded")
+                                            .foregroundColor(.green)
+                                    }
+                                } else {
+                                    HStack {
+                                        ProgressView()
+                                            .scaleEffect(0.7)
+                                        Text("Loading...")
+                                            .foregroundColor(.orange)
+                                    }
+                                }
+                            }
+                            
+                            if !translationService.isModelLoaded {
+                                Button("Retry Loading Model") {
+                                    translationService.integrateRealModel()
+                                }
+                                .foregroundColor(.blue)
+                            }
+                            
+                            Text("CV-SLT (Continuous Visual Sign Language Translation) model provides real-time sign language recognition.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
+                    } else {
+                        Text("Using simulated translation for demonstration purposes.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
 
@@ -161,6 +201,14 @@ struct SettingsView: View {
             }
         }
         .preferredColorScheme(themeManager.currentTheme.colorScheme)
+        .onAppear {
+            // Sync selectedModelType with translation service's current model
+            if translationService.currentModel == "CV-SLT" {
+                selectedModelType = "CV-SLT"
+            } else {
+                selectedModelType = "Dummy"
+            }
+        }
     }
 }
 

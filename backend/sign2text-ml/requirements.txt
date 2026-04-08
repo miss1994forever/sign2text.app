@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pydantic
+numpy
+Pillow
+mmcv==1.7.0
+mmdet==2.28.2
+mmpose==0.29.0
+xtcocotools

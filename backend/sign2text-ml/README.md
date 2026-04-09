@@ -39,7 +39,41 @@ cd /root/autodl-tmp/sign2text.app/backend/sign2text-ml
 bash run_server.sh
 ```
 
-By default the service listens on `0.0.0.0:8000`.
+By default the service listens on `0.0.0.0:6006`.
+
+You can override the port if needed:
+
+```bash
+PORT=8000 bash run_server.sh
+```
+
+## Recommended AutoDL Device Access
+
+For AutoDL plus a physical iPhone, the recommended development path is:
+
+1. run the backend on port `6006`
+2. create an SSH tunnel from the AutoDL instance to your Mac
+3. point the iPhone app at your Mac's LAN IP on port `6006`
+
+Example SSH tunnel command on your Mac:
+
+```bash
+ssh -CNg -L 6006:127.0.0.1:6006 root@connect.nmb2.seetacloud.com -p <your-ssh-port>
+```
+
+If you want the iPhone to reach the tunnel through your Mac on the local network, use a bind address that is not loopback, for example:
+
+```bash
+ssh -CNg -L 0.0.0.0:6006:127.0.0.1:6006 root@connect.nmb2.seetacloud.com -p <your-ssh-port>
+```
+
+Then set the native app backend URL to:
+
+```text
+http://<your-mac-lan-ip>:6006
+```
+
+Do not use `http://127.0.0.1:6006` on a physical iPhone. That only points back to the phone itself.
 
 ## Key Endpoints
 

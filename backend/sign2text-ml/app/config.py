@@ -19,7 +19,7 @@ class Settings:
     checkpoint_path: Path = Path(
         os.getenv(
             "SLRT_CSLR_CHECKPOINT",
-            "/root/autodl-tmp/SLRT/Online/CSLR/results/phoenix-2014t_ISLR/ckpts/best.ckpt",
+            "/root/autodl-tmp/models/checkpoints/online_slrt/best.ckpt",
         )
     )
     device: str = os.getenv("SLRT_DEVICE", "cuda")

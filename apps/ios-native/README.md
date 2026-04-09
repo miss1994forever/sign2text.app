@@ -117,7 +117,13 @@ Current native app flow:
 4. render partial gloss text returned by the backend
 5. finish the backend session when translation stops
 
-Before running the native app against a real device, set the backend URL in Settings to an address the iPhone can reach, for example `http://<your-server-ip>:8000`.
+Before running the native app against a real device on AutoDL, the recommended path is:
+
+1. run the backend on AutoDL port `6006`
+2. create an SSH tunnel from AutoDL to your Mac
+3. set the app backend URL to your Mac's LAN IP, for example `http://192.168.1.23:6006`
+
+Do not use `http://127.0.0.1:6006` on a physical iPhone.
 
 ### CV-SLT Integration (Planned)
 

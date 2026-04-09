@@ -101,7 +101,7 @@ def build_tensors_from_session(
                 f"Inconsistent keypoint count across buffered frames: expected {reference_keypoint_count}, got {keypoint_array.shape[0]}"
             )
 
-        video_frames.append(torch.from_numpy(frame_array))
+        video_frames.append(torch.from_numpy(frame_array).permute(2, 0, 1).contiguous())
         keypoint_frames.append(torch.from_numpy(keypoint_array))
         frame_indices.append(frame_payload.frame_index)
 

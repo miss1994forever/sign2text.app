@@ -25,7 +25,7 @@ class TranslationService: ObservableObject {
     @Published var isModelLoaded = false
     @Published var currentModel = "SLRT Backend"
     @Published var currentTranslation: String = ""
-    @Published var backendURL: String = UserDefaults.standard.string(forKey: "sign2text.backendURL") ?? "http://127.0.0.1:8000"
+    @Published var backendURL: String = UserDefaults.standard.string(forKey: "sign2text.backendURL") ?? "http://127.0.0.1:6006"
     @Published var connectionStatus = "Disconnected"
     @Published var lastErrorMessage: String?
     
@@ -167,6 +167,9 @@ class TranslationService: ObservableObject {
         let normalized = normalizeBaseURL(newValue)
         DispatchQueue.main.async {
             self.backendURL = normalized
+            if Self.looksLikeLoopbackURL(normalized) {
+                self.lastErrorMessage = "127.0.0.1 only works on the Mac or simulator. For a physical iPhone, use your Mac's LAN IP, e.g. http://192.168.x.x:6006"
+            }
         }
         UserDefaults.standard.set(normalized, forKey: "sign2text.backendURL")
     }
@@ -454,6 +457,10 @@ class TranslationService: ObservableObject {
 
     private func normalizeBaseURL(_ value: String) -> String {
         value.trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    }
+
+    private static func looksLikeLoopbackURL(_ value: String) -> Bool {
+        value.contains("127.0.0.1") || value.contains("localhost")
     }
 
     private func buildURL(path: String) throws -> URL {

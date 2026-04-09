@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 from threading import Lock
 from typing import Dict, List
@@ -40,6 +42,28 @@ class OnlineCSLRRuntime:
         if cslr_root not in sys.path:
             sys.path.insert(0, cslr_root)
 
+    def _resolve_checkpoint_path(self) -> Path:
+        candidates = [
+            self.settings.checkpoint_path,
+            self.settings.workspace_root / "models/checkpoints/online_slrt/best.ckpt",
+            self.settings.workspace_root / "models/checkpoints/online_slrt/cslr_best.ckpt",
+        ]
+        for candidate in candidates:
+            if candidate.is_file():
+                return candidate
+        raise FileNotFoundError(
+            "Checkpoint not found. Checked: " + ", ".join(str(candidate) for candidate in candidates)
+        )
+
+    @contextmanager
+    def _cslr_working_directory(self):
+        original_cwd = Path.cwd()
+        os.chdir(self.settings.cslr_root)
+        try:
+            yield
+        finally:
+            os.chdir(original_cwd)
+
     def load(self) -> None:
         with self._lock:
             if self._loaded:
@@ -47,42 +71,41 @@ class OnlineCSLRRuntime:
 
             self._bootstrap_imports()
 
-            import torch
-            from modelling.model import build_model
-            from prediction_slide import index2token, pad_tensor, sliding_windows
-            from utils.misc import load_config, make_logger, neq_load_customized, set_seed
+            with self._cslr_working_directory():
+                import torch
+                from modelling.model import build_model
+                from prediction_slide import index2token, pad_tensor, sliding_windows
+                from utils.misc import load_config, make_logger, neq_load_customized, set_seed
 
-            self._torch = torch
-            self._prediction_slide = {
-                "index2token": index2token,
-                "pad_tensor": pad_tensor,
-                "sliding_windows": sliding_windows,
-            }
+                self._torch = torch
+                self._prediction_slide = {
+                    "index2token": index2token,
+                    "pad_tensor": pad_tensor,
+                    "sliding_windows": sliding_windows,
+                }
 
-            cfg = load_config(str(self.settings.config_path))
-            resolved_device = self.settings.device
-            if resolved_device == "cuda" and not torch.cuda.is_available():
-                resolved_device = "cpu"
-            cfg["device"] = torch.device(resolved_device)
+                cfg = load_config(str(self.settings.config_path))
+                resolved_device = self.settings.device
+                if resolved_device == "cuda" and not torch.cuda.is_available():
+                    resolved_device = "cpu"
+                cfg["device"] = torch.device(resolved_device)
 
-            set_seed(seed=cfg["training"].get("random_seed", 42))
+                set_seed(seed=cfg["training"].get("random_seed", 42))
 
-            with open(cfg["data"]["vocab_file"], "r", encoding="utf-8") as handle:
-                vocab = json.load(handle)
+                with open(cfg["data"]["vocab_file"], "r", encoding="utf-8") as handle:
+                    vocab = json.load(handle)
 
-            cls_num = len(vocab)
-            model_dir = Path(cfg["training"]["model_dir"])
-            model_dir.mkdir(parents=True, exist_ok=True)
-            make_logger(model_dir=str(model_dir), log_file=self.settings.service_log_file)
+                cls_num = len(vocab)
+                model_dir = Path(cfg["training"]["model_dir"]).resolve()
+                model_dir.mkdir(parents=True, exist_ok=True)
+                make_logger(model_dir=str(model_dir), log_file=self.settings.service_log_file)
 
-            model = build_model(cfg, cls_num, word_emb_tab=None)
-            checkpoint_path = self.settings.checkpoint_path
-            if not checkpoint_path.is_file():
-                raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
+                model = build_model(cfg, cls_num, word_emb_tab=None)
+                checkpoint_path = self._resolve_checkpoint_path()
 
-            state_dict = torch.load(str(checkpoint_path), map_location=cfg["device"])
-            neq_load_customized(model, state_dict["model_state"], verbose=True)
-            model.eval()
+                state_dict = torch.load(str(checkpoint_path), map_location=cfg["device"])
+                neq_load_customized(model, state_dict["model_state"], verbose=True)
+                model.eval()
 
             self._cfg = cfg
             self._model = model
@@ -151,7 +174,7 @@ class OnlineCSLRRuntime:
             all_gloss_logits = []
 
             for video_split, keypoint_split in zip(video_splits, keypoint_splits):
-                labels = torch.zeros(video_split.size(0), 1, dtype=torch.long, device=cfg["device"])
+                labels = torch.zeros(video_split.size(0), dtype=torch.long, device=cfg["device"])
                 if len(cfg["data"]["input_streams"]) == 2:
                     sgn_videos = [video_split]
                     sgn_keypoints = [keypoint_split]

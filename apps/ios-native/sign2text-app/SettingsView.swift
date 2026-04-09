@@ -73,7 +73,7 @@ struct SettingsView: View {
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Backend URL")
-                        TextField("http://server-ip:8000", text: $backendURLDraft)
+                        TextField("http://<your-mac-lan-ip>:6006", text: $backendURLDraft)
                             .textInputAutocapitalization(.never)
                             .disableAutocorrection(true)
                             .keyboardType(.URL)
@@ -81,6 +81,10 @@ struct SettingsView: View {
                             .onSubmit {
                                 translationService.setBackendURL(backendURLDraft)
                             }
+
+                        Text("Recommended for AutoDL + iPhone: run the backend on AutoDL port 6006, forward it to your Mac with SSH, then fill in your Mac LAN IP here.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
 
                     Button("Refresh Backend Health") {
@@ -92,6 +96,7 @@ struct SettingsView: View {
                         Text(lastErrorMessage)
                             .font(.caption)
                             .foregroundColor(.orange)
+                    }
                 }
 
                 Section(header: Text("Camera")) {

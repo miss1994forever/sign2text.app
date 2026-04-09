@@ -128,10 +128,14 @@ struct ContentView: View {
                         }
                     }
                     .cornerRadius(12)
+                    .frame(maxWidth: .infinity, minHeight: 300, maxHeight: 380)
                     .padding(.horizontal)
                     .onAppear {
                         setupCameraConnection()
                         cameraManager.checkPermission()
+                        if cameraManager.permissionGranted {
+                            cameraManager.startSession()
+                        }
                     }
                     .alert("Camera Permission Required", isPresented: $showPermissionAlert) {
                         Button("Open Settings", role: .none) {
@@ -378,10 +382,8 @@ struct ContentView: View {
         .onChange(of: showingHistory) { oldValue, newValue in
             print("📈 History sheet state changed: \(oldValue) -> \(newValue)")
         }
-        .onChange(of: translationService.isTranslating) { oldValue, newValue in
-            if !newValue {
-                cameraManager.stopSession()
-            }
+        .onDisappear {
+            cameraManager.stopSession()
         }
         .sheet(isPresented: $showingDictionary) {
             DictionaryView()
@@ -390,6 +392,7 @@ struct ContentView: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView()
                 .environmentObject(themeManager)
+                .environmentObject(translationService)
         }
         .sheet(isPresented: $showingHistory) {
             HistoryView()
@@ -403,6 +406,11 @@ struct ContentView: View {
         cameraManager.onFrameCaptured = { frame in
             if self.translationService.isTranslating {
                 let _ = self.translationService.processFrame(frame)
+            }
+        }
+        cameraManager.onPermissionChanged = { granted in
+            if granted {
+                self.cameraManager.startSession()
             }
         }
     }
@@ -426,7 +434,6 @@ struct ContentView: View {
 
     private func toggleTranslation() {
         if translationService.isTranslating {
-            cameraManager.stopSession()
             translationService.stopTranslation()
         } else {
             cameraManager.startSession()

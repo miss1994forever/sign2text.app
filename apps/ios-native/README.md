@@ -26,7 +26,7 @@ sign2text-app/
 ### Current Features
 - ✅ Real-time camera preview
 - ✅ Camera permission handling
-- ✅ Dummy translation service (for development)
+- ✅ Native app connected to the SLRT backend session API
 - ✅ Translation history
 - ✅ Dictionary management (UI ready)
 - ✅ Settings and configuration
@@ -57,10 +57,10 @@ Defines all data structures used throughout the app:
 - Optimized for 30fps processing with frame skipping
 
 #### 3. Translation Service (`TranslationService.swift`)
-- Protocol-based design for easy AI model swapping
-- `DummyTranslationModel`: Development/testing implementation
-- `CVSLTModel`: Placeholder for CV-SLT integration
-- Real-time frame processing with confidence filtering
+- Backend session client for the FastAPI SLRT service
+- Throttled JPEG frame upload over HTTP
+- Periodic backend inference requests with partial translation updates
+- Backend URL and connection state surfaced in the native settings UI
 
 #### 4. User Interface
 - `ContentView.swift`: Main translation interface
@@ -107,11 +107,21 @@ The app requires camera access for real-time sign language detection. The permis
 
 ### Current Implementation
 
-The app uses a dummy translation service for development. It simulates real-time translation with preset Chinese phrases to demonstrate the UI and data flow.
+The app now streams camera frames to the Python SLRT backend service instead of generating dummy text locally.
+
+Current native app flow:
+
+1. start a backend translation session
+2. upload throttled JPEG frames from the camera
+3. trigger backend inference periodically
+4. render partial gloss text returned by the backend
+5. finish the backend session when translation stops
+
+Before running the native app against a real device, set the backend URL in Settings to an address the iPhone can reach, for example `http://<your-server-ip>:8000`.
 
 ### CV-SLT Integration (Planned)
 
-The architecture is designed to easily integrate the CV-SLT model from https://github.com/rzhao-zhsq/CV-SLT:
+The current direction is backend-hosted SLRT, not on-device CV-SLT. If you later decide to move inference on-device, the architecture can still be adapted for a Core ML path.
 
 1. **Model Loading**: `CVSLTModel` class in `TranslationService.swift`
 2. **Frame Processing**: Optimized pipeline for real-time inference
@@ -159,7 +169,7 @@ xcodebuild test -project sign2text-app.xcodeproj -scheme sign2text-app -destinat
 ### Debugging
 
 1. **Camera Issues**: Check permissions and device capability
-2. **Translation Issues**: Verify model loading and frame processing
+2. **Translation Issues**: Verify the backend URL, backend health endpoint, and runtime loading state
 3. **Performance**: Monitor frame rates and processing times in debug console
 
 ## Configuration

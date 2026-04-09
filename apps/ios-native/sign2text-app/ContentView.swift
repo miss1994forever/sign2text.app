@@ -20,7 +20,6 @@ struct ContentView: View {
     @EnvironmentObject var translationService: TranslationService
     @EnvironmentObject var themeManager: ThemeManager
 
-    @State private var isTranslating = false
     @State private var currentTranslation = ""  // 当前正在构建的翻译
     @State private var completedTranslations: [String] = []  // 已完成的翻译
     @State private var showingDictionary = false
@@ -88,7 +87,7 @@ struct ContentView: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .overlay(
                                 Group {
-                                    if isTranslating {
+                                    if translationService.isTranslating {
                                         VStack {
                                             HStack {
                                                 Circle()
@@ -152,7 +151,7 @@ struct ContentView: View {
 
                             Spacer()
 
-                            if isTranslating {
+                            if translationService.isTranslating {
                                 HStack(spacing: 4) {
                                     Circle()
                                         .fill(Color.green)
@@ -238,9 +237,9 @@ struct ContentView: View {
                     VStack(spacing: 16) {
                         Button(action: toggleTranslation) {
                             HStack(spacing: 12) {
-                                Image(systemName: isTranslating ? "stop.fill" : "play.fill")
+                                Image(systemName: translationService.isTranslating ? "stop.fill" : "play.fill")
                                     .font(.title3)
-                                Text(isTranslating ? "Stop Translation" : "Start Translation")
+                                Text(translationService.isTranslating ? "Stop Translation" : "Start Translation")
                                     .font(.headline)
                             }
                             .fontWeight(.semibold)
@@ -249,7 +248,7 @@ struct ContentView: View {
                             .background(
                                 LinearGradient(
                                     gradient: Gradient(
-                                        colors: isTranslating
+                                        colors: translationService.isTranslating
                                             ? [Color.red.opacity(0.8), Color.red]
                                             : [Color.green.opacity(0.8), Color.green]
                                     ),
@@ -259,11 +258,11 @@ struct ContentView: View {
                             )
                             .cornerRadius(28)
                             .shadow(
-                                color: (isTranslating ? Color.red : Color.green).opacity(0.3),
+                                color: (translationService.isTranslating ? Color.red : Color.green).opacity(0.3),
                                 radius: 8, x: 0, y: 4
                             )
-                            .scaleEffect(isTranslating ? 0.98 : 1.0)
-                            .animation(.easeInOut(duration: 0.1), value: isTranslating)
+                            .scaleEffect(translationService.isTranslating ? 0.98 : 1.0)
+                            .animation(.easeInOut(duration: 0.1), value: translationService.isTranslating)
                         }
 
                         HStack(spacing: 20) {
@@ -296,9 +295,9 @@ struct ContentView: View {
                             .disabled(completedTranslations.isEmpty && currentTranslation.isEmpty)
                         }
 
-                        Text("Camera ready • Model: Demo Mode")
+                        Text(translationService.statusSummary)
                             .font(.caption)
-                            .foregroundColor(.green)
+                            .foregroundColor(translationService.lastErrorMessage == nil ? .green : .orange)
                     }
                     .padding(.horizontal)
                     .padding(.bottom, 30)
@@ -379,6 +378,11 @@ struct ContentView: View {
         .onChange(of: showingHistory) { oldValue, newValue in
             print("📈 History sheet state changed: \(oldValue) -> \(newValue)")
         }
+        .onChange(of: translationService.isTranslating) { oldValue, newValue in
+            if !newValue {
+                cameraManager.stopSession()
+            }
+        }
         .sheet(isPresented: $showingDictionary) {
             DictionaryView()
                 .environmentObject(themeManager)
@@ -397,7 +401,7 @@ struct ContentView: View {
     private func setupCameraConnection() {
         // Connect camera frames to translation service
         cameraManager.onFrameCaptured = { frame in
-            if self.isTranslating {
+            if self.translationService.isTranslating {
                 let _ = self.translationService.processFrame(frame)
             }
         }
@@ -421,14 +425,12 @@ struct ContentView: View {
     }
 
     private func toggleTranslation() {
-        isTranslating.toggle()
-        
-        if isTranslating {
-            cameraManager.startSession()
-            translationService.startTranslation()
-        } else {
+        if translationService.isTranslating {
             cameraManager.stopSession()
             translationService.stopTranslation()
+        } else {
+            cameraManager.startSession()
+            translationService.startTranslation()
         }
     }
 
@@ -515,7 +517,7 @@ struct SettingsPlaceholderView: View {
                     HStack {
                         Text("Current Model")
                         Spacer()
-                        Text("Demo Mode")
+                        Text("SLRT Backend")
                             .foregroundColor(.secondary)
                     }
                 }

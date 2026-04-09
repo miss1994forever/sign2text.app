@@ -12,8 +12,9 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var translationService: TranslationService
 
-    @State private var selectedModelType = "Dummy"
+    @State private var backendURLDraft = ""
     @State private var cameraPosition = "Front"
     @State private var frameRate = 30
     @State private var hapticFeedback = true
@@ -59,23 +60,38 @@ struct SettingsView: View {
                     HStack {
                         Text("Current Model")
                         Spacer()
-                        Menu {
-                            Button("Dummy Model") { selectedModelType = "Dummy" }
-                            Button("CV-SLT Model") { selectedModelType = "CV-SLT" }
-                        } label: {
-                            Text(selectedModelType)
-                                .foregroundColor(.secondary)
-                        }
+                        Text(translationService.currentModel)
+                            .foregroundColor(.secondary)
                     }
 
-                    if selectedModelType == "CV-SLT" {
-                        HStack {
-                            Text("Status")
-                            Spacer()
-                            Text("Not Loaded")
-                                .foregroundColor(.orange)
-                        }
+                    HStack {
+                        Text("Status")
+                        Spacer()
+                        Text(translationService.connectionStatus)
+                            .foregroundColor(translationService.lastErrorMessage == nil ? .secondary : .orange)
                     }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Backend URL")
+                        TextField("http://server-ip:8000", text: $backendURLDraft)
+                            .textInputAutocapitalization(.never)
+                            .disableAutocorrection(true)
+                            .keyboardType(.URL)
+                            .textContentType(.URL)
+                            .onSubmit {
+                                translationService.setBackendURL(backendURLDraft)
+                            }
+                    }
+
+                    Button("Refresh Backend Health") {
+                        translationService.setBackendURL(backendURLDraft)
+                        translationService.refreshBackendHealth()
+                    }
+
+                    if let lastErrorMessage = translationService.lastErrorMessage, !lastErrorMessage.isEmpty {
+                        Text(lastErrorMessage)
+                            .font(.caption)
+                            .foregroundColor(.orange)
                 }
 
                 Section(header: Text("Camera")) {
@@ -161,6 +177,9 @@ struct SettingsView: View {
             }
         }
         .preferredColorScheme(themeManager.currentTheme.colorScheme)
+        .onAppear {
+            backendURLDraft = translationService.backendURL
+        }
     }
 }
 

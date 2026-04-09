@@ -11,6 +11,10 @@ import CoreImage
 import Foundation
 import SwiftUI
 
+#if canImport(UIKit)
+    import UIKit
+#endif
+
 // MARK: - Translation Service
 
 /// A service that handles real-time translation of sign language captured via camera frames into text.
@@ -18,9 +22,12 @@ class TranslationService: ObservableObject {
     // MARK: - Published Properties
 
     @Published var isTranslating = false
-    @Published var isModelLoaded = true
-    @Published var currentModel = "Demo"
-    @Published var currentTranslation: String = ""  // 当前正在构建的翻译
+    @Published var isModelLoaded = false
+    @Published var currentModel = "SLRT Backend"
+    @Published var currentTranslation: String = ""
+    @Published var backendURL: String = UserDefaults.standard.string(forKey: "sign2text.backendURL") ?? "http://127.0.0.1:8000"
+    @Published var connectionStatus = "Disconnected"
+    @Published var lastErrorMessage: String?
     
     // MARK: - Translation Session Management
     
@@ -53,28 +60,28 @@ class TranslationService: ObservableObject {
     /// Callback for translation errors
     var onError: ((Error) -> Void)?
 
-    /// Timer for translation updates
-    private var translationTimer: Timer?
-    private var sessionTimer: Timer?
+    private let ciContext = CIContext()
+    private let stateQueue = DispatchQueue(label: "signscribe.translation.state")
+    private let frameSubmissionInterval: TimeInterval = 0.45
+    private let inferenceInterval: TimeInterval = 1.4
+    private let inferenceEveryNFrames = 4
+    private let jpegCompressionQuality: CGFloat = 0.55
+    private let maxEncodedFrameDimension: CGFloat = 320
 
-    /// Example words for building sentences
-    private let dummyWords = [
-        "你好", "谢谢", "请", "再见", "我爱你", "对不起", 
-        "没关系", "我需要帮助", "今天", "天气", "很好", 
-        "我很", "高兴", "见到你", "这个", "多少钱", 
-        "我不", "明白", "请", "再说一遍", "祝你", "好运"
-    ]
-
-    /// Current word building state
-    private var currentWords: [String] = []
-    private var wordBuildingTimer: Timer?
-    private let wordInterval: TimeInterval = 1.5  // 每1.5秒添加一个词
-    private let sessionDuration: TimeInterval = 8.0  // 每8秒完成一个翻译会话
+    private var backendSessionId: String?
+    private var frameIndex = 0
+    private var submittedFrameCount = 0
+    private var isStartingSession = false
+    private var isSendingFrame = false
+    private var isInferring = false
+    private var isStoppingSession = false
+    private var lastSubmittedFrameAt = Date.distantPast
+    private var lastInferenceAt = Date.distantPast
 
     // MARK: - Initialization
 
     init() {
-        // Initialize with default settings
+        refreshBackendHealth()
     }
 
     // MARK: - Public Methods
@@ -83,46 +90,47 @@ class TranslationService: ObservableObject {
     func startTranslation() {
         guard !isTranslating else { return }
 
-        isTranslating = true
+        DispatchQueue.main.async {
+            self.isTranslating = true
+            self.isModelLoaded = false
+            self.currentModel = "SLRT Backend"
+            self.currentTranslation = ""
+            self.connectionStatus = "Connecting"
+            self.lastErrorMessage = nil
+        }
+        resetRuntimeState()
         startNewTranslationSession()
-
-        print("🚀 Starting real-time sign language translation session...")
-
-        // Start word building timer
-        startWordBuilding()
-        
-        // Start session completion timer
-        startSessionTimer()
+        Task {
+            await ensureBackendSession()
+        }
     }
 
     /// Processes a single camera frame for real-time translation
-    /// This is the interface for CV-SLT model integration
     func processFrame(_ frame: CIImage) -> TranslationResult? {
         guard isTranslating else { return nil }
+        let now = Date()
+        guard let imageJpegBase64 = encodeFrame(frame) else {
+            publishError(SignLanguageError.processingFailed("Failed to encode camera frame"))
+            return nil
+        }
 
-        // CV-SLT Integration Interface:
-        // 1. Input: CIImage frame from camera
-        // 2. Processing: Extract features, run through model
-        // 3. Output: TranslationResult with text and confidence
-        
-        // For now, return dummy data
-        let dummyResult = TranslationResult(
-            text: dummyWords.randomElement() ?? "hello",
-            confidence: Float.random(in: 0.7...0.95),
-            timestamp: Date(),
-            boundingBox: nil
-        )
-        
-        return dummyResult
+        guard let submission = reserveFrameSubmission(at: now) else { return nil }
+
+        Task {
+            await submitFrame(
+                imageJpegBase64: imageJpegBase64,
+                frameIndex: submission.frameIndex,
+                timestampMs: submission.timestampMs
+            )
+        }
+
+        return nil
     }
     
     /// Process multiple frames (for sequence-based models like CV-SLT)
     func processFrameSequence(_ frames: [CIImage]) -> TranslationResult? {
         guard isTranslating, !frames.isEmpty else { return nil }
-        
-        // CV-SLT works better with frame sequences
-        // This interface allows for temporal analysis
-        
+
         return processFrame(frames.last!) // Simplified for demo
     }
 
@@ -130,26 +138,22 @@ class TranslationService: ObservableObject {
     func stopTranslation() {
         guard isTranslating else { return }
 
-        isTranslating = false
-        
-        // Complete current session if there's content
-        completeCurrentSession()
-        
-        // Stop all timers
-        translationTimer?.invalidate()
-        wordBuildingTimer?.invalidate()
-        sessionTimer?.invalidate()
-        
-        translationTimer = nil
-        wordBuildingTimer = nil
-        sessionTimer = nil
+        DispatchQueue.main.async {
+            self.isTranslating = false
+            self.connectionStatus = "Stopping"
+        }
 
-        print("⏹️ Stopped real-time sign language translation")
+        Task {
+            await finishBackendSession()
+        }
     }
 
     /// Clears the translation history
     func clearHistory() {
-        completedSessions.removeAll()
+        DispatchQueue.main.async {
+            self.completedSessions.removeAll()
+            self.currentTranslation = ""
+        }
     }
     
     /// Get all completed sessions for history display
@@ -159,70 +163,358 @@ class TranslationService: ObservableObject {
 
     // MARK: - Private Methods
     
+    func setBackendURL(_ newValue: String) {
+        let normalized = normalizeBaseURL(newValue)
+        DispatchQueue.main.async {
+            self.backendURL = normalized
+        }
+        UserDefaults.standard.set(normalized, forKey: "sign2text.backendURL")
+    }
+
+    func refreshBackendHealth() {
+        Task {
+            do {
+                let health: BackendHealthResponse = try await sendRequest(path: "/api/v1/health", method: "GET")
+                await MainActor.run {
+                    self.isModelLoaded = health.modelLoaded
+                    self.connectionStatus = health.status == "ok" ? "Backend reachable" : health.status
+                    self.lastErrorMessage = nil
+                }
+            } catch {
+                publishError(error)
+                await MainActor.run {
+                    self.connectionStatus = "Backend unavailable"
+                }
+            }
+        }
+    }
+
+    var statusSummary: String {
+        let errorSuffix = (lastErrorMessage?.isEmpty == false) ? " • \(lastErrorMessage!)" : ""
+        return "\(connectionStatus) • Model: \(currentModel)\(errorSuffix)"
+    }
+
     private func startNewTranslationSession() {
         currentSession = TranslationSession(
             startTime: Date(),
             translationText: ""
         )
-        currentWords = []
-        currentTranslation = ""
-    }
-    
-    private func startWordBuilding() {
-        wordBuildingTimer = Timer.scheduledTimer(withTimeInterval: wordInterval, repeats: true) { [weak self] _ in
-            self?.addWordToCurrentTranslation()
+        DispatchQueue.main.async {
+            self.currentTranslation = ""
         }
     }
-    
-    private func startSessionTimer() {
-        sessionTimer = Timer.scheduledTimer(withTimeInterval: sessionDuration, repeats: true) { [weak self] _ in
-            self?.completeCurrentSession()
-            self?.startNewTranslationSession()
+
+    private func completeCurrentSession(with finalText: String? = nil) {
+        guard var session = currentSession else { return }
+        if let finalText, !finalText.isEmpty {
+            session.translationText = finalText
         }
-    }
-    
-    private func addWordToCurrentTranslation() {
-        guard isTranslating, let session = currentSession else { return }
-        
-        // Add a random word to build a sentence
-        if let newWord = dummyWords.randomElement() {
-            currentWords.append(newWord)
-            
-            // Build sentence with commas
-            let translationText = currentWords.joined(separator: ", ")
-            currentTranslation = translationText
-            
-            // Update current session
-            currentSession?.translationText = translationText
-            
-            // Notify UI of current translation update
-            DispatchQueue.main.async { [weak self] in
-                self?.onCurrentTranslationUpdate?(translationText)
+        guard !session.translationText.isEmpty else {
+            currentSession = nil
+            DispatchQueue.main.async {
+                self.currentTranslation = ""
             }
-            
-            print("🔤 Building translation: \(translationText)")
+            return
         }
-    }
-    
-    private func completeCurrentSession() {
-        guard var session = currentSession, !session.translationText.isEmpty else { return }
-        
+
         session.endTime = Date()
         session.isComplete = true
-        
-        completedSessions.append(session)
-        
-        // Notify UI of completed session
-        DispatchQueue.main.async { [weak self] in
-            self?.onTranslationSessionComplete?(session)
-        }
-        
-        print("✅ Completed translation session: \(session.translationText)")
-        
-        // Reset current translation
-        currentTranslation = ""
-        currentWords = []
         currentSession = nil
+
+        DispatchQueue.main.async {
+            self.completedSessions.append(session)
+            self.currentTranslation = ""
+            self.onTranslationSessionComplete?(session)
+        }
+    }
+
+    private func resetRuntimeState() {
+        stateQueue.sync {
+            backendSessionId = nil
+            frameIndex = 0
+            submittedFrameCount = 0
+            isStartingSession = false
+            isSendingFrame = false
+            isInferring = false
+            isStoppingSession = false
+            lastSubmittedFrameAt = .distantPast
+            lastInferenceAt = .distantPast
+        }
+    }
+
+    private func ensureBackendSession() async {
+        let shouldStart = stateQueue.sync { () -> Bool in
+            if isStartingSession || backendSessionId != nil {
+                return false
+            }
+            isStartingSession = true
+            return true
+        }
+        guard shouldStart else { return }
+
+        do {
+            let health: BackendHealthResponse = try await sendRequest(path: "/api/v1/health", method: "GET")
+            if !health.modelLoaded {
+                let loaded: BackendHealthResponse = try await sendRequest(path: "/api/v1/runtime/load", method: "POST")
+                await MainActor.run {
+                    self.isModelLoaded = loaded.modelLoaded
+                }
+            } else {
+                await MainActor.run {
+                    self.isModelLoaded = health.modelLoaded
+                }
+            }
+
+            let createRequest = BackendSessionCreateRequest(metadata: [
+                "client": "ios-native",
+                "platform": "ios",
+                "app": "sign2text-app",
+            ])
+            let createResponse: BackendSessionCreateResponse = try await sendRequest(
+                path: "/api/v1/translation/session",
+                method: "POST",
+                body: createRequest
+            )
+
+            stateQueue.sync {
+                backendSessionId = createResponse.sessionId
+                isStartingSession = false
+            }
+
+            await MainActor.run {
+                self.connectionStatus = "Streaming"
+                self.currentModel = "SLRT Backend"
+                self.lastErrorMessage = nil
+            }
+        } catch {
+            stateQueue.sync {
+                isStartingSession = false
+            }
+            publishError(error)
+            await MainActor.run {
+                self.isTranslating = false
+                self.connectionStatus = "Connection failed"
+            }
+            completeCurrentSession()
+        }
+    }
+
+    private func finishBackendSession() async {
+        let sessionId = stateQueue.sync { () -> String? in
+            if isStoppingSession {
+                return nil
+            }
+            isStoppingSession = true
+            return backendSessionId
+        }
+
+        guard let sessionId else {
+            completeCurrentSession()
+            return
+        }
+
+        defer {
+            resetRuntimeState()
+        }
+
+        do {
+            let response: BackendTranslationEvent = try await sendRequest(
+                path: "/api/v1/translation/session/\(sessionId)/finish",
+                method: "POST"
+            )
+            applyTranslationEvent(response)
+            completeCurrentSession(with: response.text)
+            await MainActor.run {
+                self.connectionStatus = "Stopped"
+            }
+        } catch {
+            publishError(error)
+            completeCurrentSession(with: currentSession?.translationText)
+            await MainActor.run {
+                self.connectionStatus = "Stopped with error"
+            }
+        }
+    }
+
+    private func reserveFrameSubmission(at now: Date) -> ReservedFrameSubmission? {
+        stateQueue.sync {
+            guard backendSessionId != nil else { return nil }
+            guard !isSendingFrame else { return nil }
+            guard now.timeIntervalSince(lastSubmittedFrameAt) >= frameSubmissionInterval else { return nil }
+            let reservedFrameIndex = frameIndex
+            frameIndex += 1
+            isSendingFrame = true
+            lastSubmittedFrameAt = now
+            return ReservedFrameSubmission(
+                frameIndex: reservedFrameIndex,
+                timestampMs: Int(now.timeIntervalSince1970 * 1000)
+            )
+        }
+    }
+
+    private func submitFrame(imageJpegBase64: String, frameIndex: Int, timestampMs: Int) async {
+        guard let sessionId = stateQueue.sync(execute: { backendSessionId }) else {
+            stateQueue.sync {
+                isSendingFrame = false
+            }
+            return
+        }
+
+        defer {
+            stateQueue.sync {
+                isSendingFrame = false
+            }
+        }
+
+        do {
+            let frameRequest = BackendFrameUploadRequest(
+                frameIndex: frameIndex,
+                timestampMs: timestampMs,
+                imageJpegBase64: imageJpegBase64
+            )
+            let response: BackendTranslationEvent = try await sendRequest(
+                path: "/api/v1/translation/session/\(sessionId)/frame",
+                method: "POST",
+                body: frameRequest
+            )
+            applyTranslationEvent(response)
+
+            let shouldInfer = stateQueue.sync { () -> Bool in
+                submittedFrameCount += 1
+                let enoughFrames = submittedFrameCount % inferenceEveryNFrames == 0
+                let enoughTime = Date().timeIntervalSince(lastInferenceAt) >= inferenceInterval
+                guard enoughFrames || enoughTime else { return false }
+                guard !isInferring else { return false }
+                isInferring = true
+                lastInferenceAt = Date()
+                return true
+            }
+
+            if shouldInfer {
+                await inferSession(sessionId: sessionId)
+            }
+        } catch {
+            publishError(error)
+        }
+    }
+
+    private func inferSession(sessionId: String) async {
+        defer {
+            stateQueue.sync {
+                isInferring = false
+            }
+        }
+
+        do {
+            let request = BackendInferenceRequest(predSrc: "ensemble")
+            let response: BackendTranslationEvent = try await sendRequest(
+                path: "/api/v1/translation/session/\(sessionId)/infer",
+                method: "POST",
+                body: request
+            )
+            applyTranslationEvent(response)
+        } catch {
+            publishError(error)
+        }
+    }
+
+    private func applyTranslationEvent(_ response: BackendTranslationEvent) {
+        if let text = response.text, !text.isEmpty {
+            currentSession?.translationText = text
+            DispatchQueue.main.async {
+                self.currentTranslation = text
+                self.onCurrentTranslationUpdate?(text)
+                self.connectionStatus = response.status == "ok" ? "Receiving translation" : response.status.capitalized
+                self.lastErrorMessage = nil
+            }
+            return
+        }
+
+        DispatchQueue.main.async {
+            self.connectionStatus = response.status.capitalized
+        }
+    }
+
+    private func publishError(_ error: Error) {
+        let message: String
+        if let signLanguageError = error as? SignLanguageError {
+            message = signLanguageError.localizedDescription
+        } else if let backendError = error as? BackendServiceError {
+            message = backendError.localizedDescription
+        } else {
+            message = error.localizedDescription
+        }
+
+        DispatchQueue.main.async {
+            self.lastErrorMessage = message
+            self.connectionStatus = "Error"
+            self.onError?(error)
+        }
+    }
+
+    private func normalizeBaseURL(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    }
+
+    private func buildURL(path: String) throws -> URL {
+        let normalized = normalizeBaseURL(backendURL)
+        guard !normalized.isEmpty else {
+            throw SignLanguageError.networkError("Backend URL is empty")
+        }
+        guard let url = URL(string: normalized + path) else {
+            throw SignLanguageError.networkError("Invalid backend URL: \(normalized)")
+        }
+        return url
+    }
+
+    private func sendRequest<Response: Decodable>(path: String, method: String) async throws -> Response {
+        try await sendRequest(path: path, method: method, body: Optional<String>.none as String?)
+    }
+
+    private func sendRequest<Request: Encodable, Response: Decodable>(path: String, method: String, body: Request? = nil) async throws -> Response {
+        let url = try buildURL(path: path)
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.timeoutInterval = 60
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        if let body {
+            request.httpBody = try JSONEncoder().encode(body)
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw SignLanguageError.networkError("Backend returned a non-HTTP response")
+        }
+
+        guard (200 ... 299).contains(httpResponse.statusCode) else {
+            if let backendError = try? JSONDecoder().decode(BackendErrorResponse.self, from: data), let detail = backendError.detail {
+                throw BackendServiceError.server(detail)
+            }
+            let bodyText = String(data: data, encoding: .utf8) ?? "Unknown backend error"
+            throw BackendServiceError.httpStatus(httpResponse.statusCode, bodyText)
+        }
+
+        return try JSONDecoder().decode(Response.self, from: data)
+    }
+
+    private func encodeFrame(_ frame: CIImage) -> String? {
+        let extent = frame.extent.integral
+        guard extent.width > 0, extent.height > 0 else { return nil }
+
+        let scale = min(1.0, maxEncodedFrameDimension / max(extent.width, extent.height))
+        let resizedFrame = scale < 1.0 ? frame.transformed(by: CGAffineTransform(scaleX: scale, y: scale)) : frame
+
+        guard let cgImage = ciContext.createCGImage(resizedFrame, from: resizedFrame.extent) else { return nil }
+
+        #if canImport(UIKit)
+            let image = UIImage(cgImage: cgImage)
+            guard let data = image.jpegData(compressionQuality: jpegCompressionQuality) else { return nil }
+            return data.base64EncodedString()
+        #else
+            return nil
+        #endif
     }
 }
 
@@ -243,120 +535,70 @@ struct TranslationResult {
     }
 }
 
-// MARK: - CV-SLT Integration Interface
-
-extension TranslationService {
-    /// CV-SLT Model Integration Interface
-    /// This is the interface that CV-SLT model should implement
-    
-    struct CVSLTModelInterface {
-        /// Initialize the CV-SLT model
-        static func loadModel(modelPath: String) -> Bool {
-            // TODO: Load CV-SLT model from path
-            // Return true if successful, false otherwise
-            return false
-        }
-        
-        /// Process a sequence of frames and return translation
-        static func translateFrameSequence(_ frames: [CIImage]) -> TranslationResult? {
-            // TODO: Implement CV-SLT processing
-            // 1. Preprocess frames to model input format
-            // 2. Run through CV-SLT encoder-decoder
-            // 3. Return translation with confidence
-            return nil
-        }
-        
-        /// Get model configuration
-        static func getModelConfig() -> ModelConfig {
-            return ModelConfig(
-                inputFrameSize: CGSize(width: 224, height: 224),
-                sequenceLength: 32,
-                vocabularySize: 1000,
-                confidenceThreshold: 0.7
-            )
-        }
-    }
-    
-    struct ModelConfig {
-        let inputFrameSize: CGSize
-        let sequenceLength: Int
-        let vocabularySize: Int
-        let confidenceThreshold: Float
-    }
+private struct ReservedFrameSubmission {
+    let frameIndex: Int
+    let timestampMs: Int
 }
 
+private struct BackendHealthResponse: Decodable {
+    let status: String
+    let modelLoaded: Bool
+    let poseExtractorLoaded: Bool
+    let device: String
+}
 
-//    private func preprocessFrameForCVSLT(_ frame: CIImage) -> CIImage {
-//        // Preprocess frame according to CV-SLT requirements
-//        // 1. Resize to input size (224x224)
-//        // 2. Normalize pixel values
-//        // 3. Apply any required transformations
-//        
-//        let transform = CGAffineTransform(
-//            scaleX: cvSLTConfig.inputFrameSize.width / frame.extent.width,
-//            y: cvSLTConfig.inputFrameSize.height / frame.extent.height
-//        )
-//        
-//        return frame.transformed(by: transform)
-//    }
+private struct BackendSessionCreateRequest: Encodable {
+    let metadata: [String: String]
+}
 
-    
-    // MARK: - Fallback Processing Methods
-    
-    private func processCustomFrame(_ frame: CIImage) -> (text: String, confidence: Float)? {
-        // Implementation for custom models
-        return nil
-    }
-    
-    private func processCustomSequence(_ frames: [CIImage]) -> (text: String, confidence: Float)? {
-        // Implementation for custom models
-        return nil
-    }
-    
-    private func processDummyFrame(_ frame: CIImage) -> (text: String, confidence: Float)? {
-        // Mock processing for testing
-        let dummyTexts = ["你好", "谢谢", "再见", "我爱你", "请"]
-        let randomText = dummyTexts.randomElement() ?? "Unknown"
-        let confidence = Float.random(in: 0.7...0.95)
-        return (randomText, confidence)
-    }
+private struct BackendSessionCreateResponse: Decodable {
+    let sessionId: String
+    let createdAt: String
+    let status: String
+}
 
-/// Model deployment helper for converting Python models to iOS
-class ModelDeploymentHelper {
-    /// Convert CV-SLT PyTorch model to CoreML format
-    static func convertPyTorchToCoreML(
-        pytorchModelPath: String,
-        outputPath: String,
-        completion: @escaping (Result<String, Error>) -> Void
-    ) {
-        // TODO: Implement model conversion
-        // This would typically be done offline and the converted model
-        // would be bundled with the app or downloaded at runtime
-        
-        // For now, return mock success
-        DispatchQueue.global().async {
-            // Simulate conversion time
-            Thread.sleep(forTimeInterval: 2.0)
-            DispatchQueue.main.async {
-                completion(.success(outputPath))
-            }
-        }
-    }
-    
-    /// Download and setup CV-SLT model from cloud
-    static func downloadCVSLTModel(
-        completion: @escaping (Result<String, Error>) -> Void
-    ) {
-        // TODO: Implement model download from cloud storage
-        // This would download the converted CoreML model
-        
-        DispatchQueue.global().async {
-            // Simulate download
-            Thread.sleep(forTimeInterval: 5.0)
-            DispatchQueue.main.async {
-                let mockPath = Bundle.main.path(forResource: "cv_slt_model", ofType: "mlmodel") ?? ""
-                completion(.success(mockPath))
-            }
+private struct BackendFrameUploadRequest: Encodable {
+    let frameIndex: Int
+    let timestampMs: Int
+    let imageJpegBase64: String
+}
+
+private struct BackendInferenceRequest: Encodable {
+    let predSrc: String
+}
+
+private struct BackendTranslationCandidate: Decodable {
+    let decodeMethod: String
+    let glossText: String
+}
+
+private struct BackendTranslationEvent: Decodable {
+    let sessionId: String
+    let type: String
+    let status: String
+    let frameCount: Int
+    let keypointCount: Int
+    let modelLoaded: Bool
+    let text: String?
+    let decodeMethod: String?
+    let candidates: [BackendTranslationCandidate]
+    let notes: [String]
+}
+
+private struct BackendErrorResponse: Decodable {
+    let detail: String?
+}
+
+private enum BackendServiceError: LocalizedError {
+    case server(String)
+    case httpStatus(Int, String)
+
+    var errorDescription: String? {
+        switch self {
+        case .server(let message):
+            return message
+        case .httpStatus(let statusCode, let body):
+            return "Backend HTTP \(statusCode): \(body)"
         }
     }
 }

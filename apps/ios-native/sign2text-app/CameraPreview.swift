@@ -236,9 +236,8 @@ struct SkeletonOverlay: View {
         let yOffset = (canvasSize.height - scaledHeight) / 2
 
         return skeletonFrame.keypoints.enumerated().map { index, point in
-            let sourceX = isMirrored ? (sourceSize.width - point.x) : point.x
             let location = CGPoint(
-                x: xOffset + sourceX * scale,
+                x: xOffset + point.x * scale,
                 y: yOffset + point.y * scale
             )
             let isHandPoint = (91 ... 132).contains(index)

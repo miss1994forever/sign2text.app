@@ -63,9 +63,9 @@ class TranslationService: ObservableObject {
 
     private let ciContext = CIContext()
     private let stateQueue = DispatchQueue(label: "signscribe.translation.state")
-    private let frameSubmissionInterval: TimeInterval = 0.45
-    private let inferenceInterval: TimeInterval = 1.4
-    private let inferenceEveryNFrames = 4
+    private let frameSubmissionInterval: TimeInterval = 0.2
+    private let inferenceInterval: TimeInterval = 0.45
+    private let inferenceEveryNFrames = 1
     private let jpegCompressionQuality: CGFloat = 0.55
     private let maxEncodedFrameDimension: CGFloat = 320
 

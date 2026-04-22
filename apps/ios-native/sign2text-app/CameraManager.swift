@@ -436,6 +436,29 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
 // MARK: - AVCaptureVideoDataOutputSampleBufferDelegate
 
 extension CameraManager {
+    private func previewAlignedImage(from pixelBuffer: CVPixelBuffer, connection: AVCaptureConnection) -> CIImage {
+        let image = CIImage(cvPixelBuffer: pixelBuffer)
+
+        #if os(iOS)
+            let exifOrientation: Int32
+            switch connection.videoOrientation {
+            case .portrait:
+                exifOrientation = connection.isVideoMirrored ? 5 : 6
+            case .portraitUpsideDown:
+                exifOrientation = connection.isVideoMirrored ? 7 : 8
+            case .landscapeRight:
+                exifOrientation = connection.isVideoMirrored ? 4 : 1
+            case .landscapeLeft:
+                exifOrientation = connection.isVideoMirrored ? 2 : 3
+            @unknown default:
+                exifOrientation = connection.isVideoMirrored ? 5 : 6
+            }
+            return image.oriented(forExifOrientation: Int(exifOrientation))
+        #else
+            return image
+        #endif
+    }
+
     func captureOutput(
         _ output: AVCaptureOutput,
         didOutput sampleBuffer: CMSampleBuffer,
@@ -450,7 +473,7 @@ extension CameraManager {
 
         // Convert sample buffer to CIImage for processing
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+        let ciImage = previewAlignedImage(from: pixelBuffer, connection: connection)
 
         // Pass the frame to the callback
         DispatchQueue.main.async { [weak self] in

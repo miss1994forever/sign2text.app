@@ -17,6 +17,8 @@ class FramePayload:
     frame_index: int
     timestamp_ms: int
     image_jpeg_base64: str
+    image_width: int
+    image_height: int
 
 
 @dataclass
@@ -36,6 +38,8 @@ class SessionState:
     frames: Deque[FramePayload] = field(init=False)
     keypoints: Dict[int, KeypointPayload] = field(default_factory=dict)
     latest_text: Optional[str] = None
+    latest_gloss_text: Optional[str] = None
+    latest_translation_text: Optional[str] = None
     latest_decode_method: Optional[str] = None
     latest_candidates: List[Dict[str, str]] = field(default_factory=list)
 
@@ -53,6 +57,13 @@ class SessionState:
         self.keypoints[payload.frame_index] = payload
         self.touch()
 
+    def latest_skeleton_frame(self) -> Optional[tuple[FramePayload, KeypointPayload]]:
+        for frame in reversed(self.frames):
+            keypoint_payload = self.keypoints.get(frame.frame_index)
+            if keypoint_payload is not None:
+                return frame, keypoint_payload
+        return None
+
     @property
     def frame_count(self) -> int:
         return len(self.frames)
@@ -61,8 +72,16 @@ class SessionState:
     def keypoint_count(self) -> int:
         return len(self.keypoints)
 
-    def update_result(self, text: str, decode_method: str, candidates: List[Dict[str, str]]) -> None:
-        self.latest_text = text
+    def update_result(
+        self,
+        gloss_text: str,
+        decode_method: str,
+        candidates: List[Dict[str, str]],
+        translation_text: Optional[str] = None,
+    ) -> None:
+        self.latest_gloss_text = gloss_text
+        self.latest_translation_text = translation_text
+        self.latest_text = translation_text or gloss_text
         self.latest_decode_method = decode_method
         self.latest_candidates = candidates
         self.touch()

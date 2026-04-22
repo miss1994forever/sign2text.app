@@ -21,6 +21,8 @@ Compatibility path:
 
 - it does not yet connect CSLR output to the Online SLT text model
 
+See `WAIT_K_SLT_INTEGRATION.md` for the concrete integration plan to add wait-k gloss-to-text generation on top of the current CSLR backend.
+
 That means the service is a real backend scaffold, not a finished realtime translation server.
 
 ## Layout
@@ -39,12 +41,26 @@ cd /root/autodl-tmp/sign2text.app/backend/sign2text-ml
 bash run_server.sh
 ```
 
-By default the service listens on `0.0.0.0:6006`.
+By default the service listens on `0.0.0.0:6006` and starts in CSL-Daily full-vocabulary CSLR mode.
+
+Default runtime behavior:
+
+- loads the CSL-Daily Online CSLR checkpoint at `/root/autodl-tmp/models/checkpoints/online_slrt/cslr_best.ckpt`
+- uses the processed CSL-Daily full gloss vocabulary from `/root/autodl-tmp/SLRT/TwoStreamNetwork/data/csl-daily/gloss2ids.pkl`
+- disables wait-k SLT by default so the app receives raw gloss output from the full CSL-Daily vocabulary
+
+This is the safest path for app bring-up when the goal is to connect the frontend to the original full vocabulary first.
 
 You can override the port if needed:
 
 ```bash
 PORT=8000 bash run_server.sh
+```
+
+You can switch back to the Phoenix preset if needed:
+
+```bash
+SLRT_DATASET_PRESET=phoenix SIGN2TEXT_ENABLE_SLT=1 bash run_server.sh
 ```
 
 ## Recommended AutoDL Device Access

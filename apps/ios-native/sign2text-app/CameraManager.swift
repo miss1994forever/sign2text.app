@@ -69,6 +69,10 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
     /// Callback for permission changes
     var onPermissionChanged: ((Bool) -> Void)?
 
+    var isFrontCameraActive: Bool {
+        currentCameraInput?.device.position != .back
+    }
+
     // MARK: - Initialization
 
     override init() {

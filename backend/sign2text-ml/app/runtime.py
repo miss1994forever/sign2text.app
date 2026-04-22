@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import pickle
 import sys
 from contextlib import contextmanager
 from pathlib import Path
@@ -55,6 +56,24 @@ class OnlineCSLRRuntime:
             "Checkpoint not found. Checked: " + ", ".join(str(candidate) for candidate in candidates)
         )
 
+    def _load_vocab(self, vocab_path: str) -> List[str]:
+        path = Path(vocab_path)
+        if not path.exists():
+            raise FileNotFoundError(f"Vocabulary file not found: {path}")
+
+        if path.suffix == ".pkl":
+            with open(path, "rb") as handle:
+                gloss2ids = pickle.load(handle)
+            if not isinstance(gloss2ids, dict):
+                raise ValueError(f"Pickle vocabulary must contain a token-to-id mapping: {path}")
+            return [token for token, _ in sorted(gloss2ids.items(), key=lambda item: item[1])]
+
+        with open(path, "r", encoding="utf-8") as handle:
+            vocab = json.load(handle)
+        if not isinstance(vocab, list):
+            raise ValueError(f"JSON vocabulary must be a token list: {path}")
+        return vocab
+
     @contextmanager
     def _cslr_working_directory(self):
         original_cwd = Path.cwd()
@@ -92,8 +111,7 @@ class OnlineCSLRRuntime:
 
                 set_seed(seed=cfg["training"].get("random_seed", 42))
 
-                with open(cfg["data"]["vocab_file"], "r", encoding="utf-8") as handle:
-                    vocab = json.load(handle)
+                vocab = self._load_vocab(cfg["data"]["vocab_file"])
 
                 cls_num = len(vocab)
                 model_dir = Path(cfg["training"]["model_dir"]).resolve()
@@ -265,6 +283,8 @@ class OnlineCSLRRuntime:
 
             return {
                 "text": best_text,
+                "glossText": best_text,
+                "translationText": None,
                 "decodeMethod": best_method,
                 "candidates": candidates,
                 "windowSize": win_size,

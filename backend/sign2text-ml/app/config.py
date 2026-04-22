@@ -5,29 +5,69 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+def _default_dataset_preset() -> str:
+    return os.getenv("SLRT_DATASET_PRESET", "csl-daily").strip().lower()
+
+
+def _default_cslr_config() -> Path:
+    configured = os.getenv("SLRT_CSLR_CONFIG")
+    if configured:
+        return Path(configured)
+
+    if _default_dataset_preset() == "csl-daily":
+        return Path("/root/autodl-tmp/sign2text.app/backend/sign2text-ml/configs/slide_csl-daily_runtime.yaml")
+
+    return Path("/root/autodl-tmp/SLRT/Online/CSLR/configs/slide_phoenix-2014t.yaml")
+
+
+def _default_cslr_checkpoint() -> Path:
+    configured = os.getenv("SLRT_CSLR_CHECKPOINT")
+    if configured:
+        return Path(configured)
+
+    if _default_dataset_preset() == "csl-daily":
+        return Path("/root/autodl-tmp/models/checkpoints/online_slrt/cslr_best.ckpt")
+
+    return Path("/root/autodl-tmp/models/checkpoints/online_slrt/best.ckpt")
+
+
+def _default_slt_config() -> Path:
+    configured = os.getenv("SLRT_SLT_CONFIG")
+    if configured:
+        return Path(configured)
+
+    if _default_dataset_preset() == "csl-daily":
+        return Path("/root/autodl-tmp/SLRT/Online/SLT/configs/g2t_wait2_csl.yaml")
+
+    return Path("/root/autodl-tmp/SLRT/Online/SLT/configs/g2t_wait2.yaml")
+
+
+def _default_enable_slt() -> bool:
+    configured = os.getenv("SIGN2TEXT_ENABLE_SLT")
+    if configured:
+        return configured == "1"
+    return _default_dataset_preset() != "csl-daily"
+
+
 @dataclass(frozen=True)
 class Settings:
     workspace_root: Path = Path(os.getenv("WORKSPACE_ROOT", "/root/autodl-tmp"))
     slrt_root: Path = Path(os.getenv("SLRT_ROOT", "/root/autodl-tmp/SLRT"))
     cslr_root: Path = Path(os.getenv("SLRT_CSLR_ROOT", "/root/autodl-tmp/SLRT/Online/CSLR"))
-    config_path: Path = Path(
-        os.getenv(
-            "SLRT_CSLR_CONFIG",
-            "/root/autodl-tmp/SLRT/Online/CSLR/configs/slide_phoenix-2014t.yaml",
-        )
-    )
-    checkpoint_path: Path = Path(
-        os.getenv(
-            "SLRT_CSLR_CHECKPOINT",
-            "/root/autodl-tmp/models/checkpoints/online_slrt/best.ckpt",
-        )
-    )
+    slt_root: Path = Path(os.getenv("SLRT_SLT_ROOT", "/root/autodl-tmp/SLRT/Online/SLT"))
+    dataset_preset: str = _default_dataset_preset()
+    config_path: Path = _default_cslr_config()
+    checkpoint_path: Path = _default_cslr_checkpoint()
+    slt_config_path: Path = _default_slt_config()
+    slt_checkpoint_path: str = os.getenv("SLRT_SLT_CHECKPOINT", "")
     device: str = os.getenv("SLRT_DEVICE", "cuda")
     pred_src: str = os.getenv("SLRT_PRED_SRC", "ensemble")
     split_size: int = int(os.getenv("SLRT_SPLIT_SIZE", "8"))
     max_buffer_frames: int = int(os.getenv("SLRT_MAX_BUFFER_FRAMES", "96"))
     session_timeout_seconds: int = int(os.getenv("SLRT_SESSION_TIMEOUT_SECONDS", "1800"))
     eager_load: bool = os.getenv("SLRT_EAGER_LOAD", "0") == "1"
+    enable_slt: bool = _default_enable_slt()
+    slt_eager_load: bool = os.getenv("SLRT_SLT_EAGER_LOAD", "0") == "1"
     service_log_file: str = os.getenv("SLRT_SERVICE_LOG_FILE", "sign2text_service.log")
     pose_det_config: str = os.getenv("SLRT_POSE_DET_CONFIG", "")
     pose_det_ckpt: str = os.getenv(

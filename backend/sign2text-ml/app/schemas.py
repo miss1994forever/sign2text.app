@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 class HealthResponse(BaseModel):
     status: str
     modelLoaded: bool
+    translationModelLoaded: bool
     poseExtractorLoaded: bool
     device: str
     activeSessions: int
@@ -29,6 +30,8 @@ class FrameUploadRequest(BaseModel):
     frameIndex: int
     timestampMs: int
     imageJpegBase64: str
+    imageWidth: int
+    imageHeight: int
 
 
 class KeypointUploadRequest(BaseModel):
@@ -52,6 +55,18 @@ class TranslationCandidate(BaseModel):
     glossText: str
 
 
+class FrameSizeResponse(BaseModel):
+    width: int
+    height: int
+
+
+class SkeletonFrameResponse(BaseModel):
+    frameIndex: int
+    timestampMs: int
+    sourceSize: FrameSizeResponse
+    keypoints: List[List[float]]
+
+
 class TranslationEventResponse(BaseModel):
     sessionId: str
     type: str
@@ -60,10 +75,13 @@ class TranslationEventResponse(BaseModel):
     keypointCount: int
     modelLoaded: bool
     text: Optional[str] = None
+    glossText: Optional[str] = None
+    translationText: Optional[str] = None
     decodeMethod: Optional[str] = None
     candidates: List[TranslationCandidate] = Field(default_factory=list)
     notes: List[str] = Field(default_factory=list)
     metadata: Dict[str, str] = Field(default_factory=dict)
+    skeletonFrame: Optional[SkeletonFrameResponse] = None
 
 
 class WebSocketEnvelope(BaseModel):

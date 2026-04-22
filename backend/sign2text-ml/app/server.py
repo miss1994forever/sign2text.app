@@ -7,22 +7,26 @@ from .pose import PoseDependencyError, WholeBodyPoseExtractor
 from .preprocessing import build_tensors_from_session
 from .runtime import OnlineCSLRRuntime
 from .schemas import (
+    FrameSizeResponse,
     FrameUploadRequest,
     HealthResponse,
     InferenceRequest,
     KeypointUploadRequest,
     SessionCreateRequest,
     SessionCreateResponse,
+    SkeletonFrameResponse,
     TensorInferenceRequest,
     TranslationCandidate,
     TranslationEventResponse,
     WebSocketEnvelope,
 )
 from .session import FramePayload, KeypointPayload, SessionManager
+from .slt_runtime import WaitKSLTRuntime, WaitKSLTRuntimeError
 
 
 app = FastAPI(title="Sign2Text SLRT Service", version="0.1.0")
 runtime = OnlineCSLRRuntime(settings)
+slt_runtime = WaitKSLTRuntime(settings)
 pose_extractor = WholeBodyPoseExtractor(settings)
 session_manager = SessionManager(max_buffer_frames=settings.max_buffer_frames)
 
@@ -31,6 +35,8 @@ session_manager = SessionManager(max_buffer_frames=settings.max_buffer_frames)
 def startup() -> None:
     if settings.eager_load:
         runtime.load()
+    if settings.enable_slt and settings.slt_eager_load:
+        slt_runtime.load()
     if settings.pose_eager_load:
         pose_extractor.load()
 
@@ -39,6 +45,7 @@ def build_health_response() -> HealthResponse:
     return HealthResponse(
         status="ok",
         modelLoaded=runtime.loaded,
+        translationModelLoaded=slt_runtime.loaded,
         poseExtractorLoaded=pose_extractor.loaded,
         device=settings.device,
         activeSessions=session_manager.count(),
@@ -59,6 +66,17 @@ def build_session_response(session_id: str, response_type: str, status: str, not
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=f"Unknown session: {session_id}") from exc
 
+    skeleton_frame = None
+    latest_skeleton = session.latest_skeleton_frame()
+    if latest_skeleton is not None:
+        frame_payload, keypoint_payload = latest_skeleton
+        skeleton_frame = SkeletonFrameResponse(
+            frameIndex=frame_payload.frame_index,
+            timestampMs=keypoint_payload.timestamp_ms,
+            sourceSize=FrameSizeResponse(width=frame_payload.image_width, height=frame_payload.image_height),
+            keypoints=keypoint_payload.keypoints,
+        )
+
     return TranslationEventResponse(
         sessionId=session.session_id,
         type=response_type,
@@ -67,10 +85,13 @@ def build_session_response(session_id: str, response_type: str, status: str, not
         keypointCount=session.keypoint_count,
         modelLoaded=runtime.loaded,
         text=session.latest_text,
+        glossText=session.latest_gloss_text,
+        translationText=session.latest_translation_text,
         decodeMethod=session.latest_decode_method,
         candidates=[TranslationCandidate(**candidate) for candidate in session.latest_candidates],
         notes=notes,
         metadata=session.metadata,
+        skeletonFrame=skeleton_frame,
     )
 
 
@@ -82,6 +103,11 @@ def health() -> HealthResponse:
 @app.post("/api/v1/runtime/load", response_model=HealthResponse)
 def load_runtime() -> HealthResponse:
     runtime.load()
+    if settings.enable_slt:
+        try:
+            slt_runtime.load()
+        except WaitKSLTRuntimeError:
+            pass
     return build_health_response()
 
 
@@ -108,6 +134,8 @@ def push_frame(session_id: str, request: FrameUploadRequest) -> TranslationEvent
             frame_index=request.frameIndex,
             timestamp_ms=request.timestampMs,
             image_jpeg_base64=request.imageJpegBase64,
+            image_width=request.imageWidth,
+            image_height=request.imageHeight,
         )
     )
     return build_session_response(
@@ -180,6 +208,10 @@ def infer_session(session_id: str, request: InferenceRequest) -> TranslationEven
 
     runtime.load()
 
+    translation_text = None
+    translation_notes = []
+    translation_decode_method = None
+
     try:
         batch = build_tensors_from_session(
             session,
@@ -201,16 +233,30 @@ def infer_session(session_id: str, request: InferenceRequest) -> TranslationEven
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Live inference failed: {exc}") from exc
 
+    if settings.enable_slt and result.get("glossText"):
+        try:
+            slt_result = slt_runtime.translate_gloss_text(result["glossText"])
+            translation_text = slt_result["translationText"]
+            translation_decode_method = slt_result["decodeMethod"]
+        except WaitKSLTRuntimeError as exc:
+            translation_notes.append(f"Wait-k SLT unavailable: {exc}")
+        except Exception as exc:
+            translation_notes.append(f"Wait-k SLT failed: {exc}")
+
     session.update_result(
-        text=result["text"],
+        gloss_text=result["glossText"],
         decode_method=result["decodeMethod"],
         candidates=result["candidates"],
+        translation_text=translation_text,
     )
 
     notes = extraction_notes + [
         f"Ran live CSLR inference on {len(batch.frame_indices)} aligned frames.",
         f"Using decode method {result['decodeMethod']}",
     ]
+    if translation_decode_method:
+        notes.append(f"Generated translation using {translation_decode_method}.")
+    notes.extend(translation_notes)
     if batch.dropped_frame_indices:
         notes.append(
             "Dropped frames without aligned keypoints: "
@@ -233,6 +279,18 @@ def infer_tensors(request: TensorInferenceRequest) -> TranslationEventResponse:
         keypoint_tensor_path=request.keypointTensorPath,
         pred_src=request.predSrc,
     )
+    translation_text = None
+    notes = ["Inference completed using prebuilt tensors and the real CSLR runtime."]
+    if settings.enable_slt and result.get("glossText"):
+        try:
+            slt_result = slt_runtime.translate_gloss_text(result["glossText"])
+            translation_text = slt_result["translationText"]
+            notes.append(f"Generated translation using {slt_result['decodeMethod']}.")
+        except WaitKSLTRuntimeError as exc:
+            notes.append(f"Wait-k SLT unavailable: {exc}")
+        except Exception as exc:
+            notes.append(f"Wait-k SLT failed: {exc}")
+
     return TranslationEventResponse(
         sessionId="debug",
         type="partial_translation",
@@ -240,10 +298,12 @@ def infer_tensors(request: TensorInferenceRequest) -> TranslationEventResponse:
         frameCount=0,
         keypointCount=0,
         modelLoaded=runtime.loaded,
-        text=result["text"],
+        text=translation_text or result["glossText"],
+        glossText=result["glossText"],
+        translationText=translation_text,
         decodeMethod=result["decodeMethod"],
         candidates=[TranslationCandidate(**candidate) for candidate in result["candidates"]],
-        notes=["Inference completed using prebuilt tensors and the real CSLR runtime."],
+        notes=notes,
         metadata={},
     )
 

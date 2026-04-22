@@ -87,6 +87,15 @@ struct ContentView: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .overlay(
                                 Group {
+                                    if translationService.isTranslating,
+                                        let skeletonFrame = translationService.latestSkeletonFrame
+                                    {
+                                        SkeletonOverlay(
+                                            skeletonFrame: skeletonFrame,
+                                            isMirrored: cameraManager.isFrontCameraActive
+                                        )
+                                    }
+
                                     if translationService.isTranslating {
                                         VStack {
                                             HStack {

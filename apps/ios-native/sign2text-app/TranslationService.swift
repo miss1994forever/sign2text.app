@@ -28,6 +28,7 @@ class TranslationService: ObservableObject {
     @Published var backendURL: String = UserDefaults.standard.string(forKey: "sign2text.backendURL") ?? "http://127.0.0.1:6006"
     @Published var connectionStatus = "Disconnected"
     @Published var lastErrorMessage: String?
+    @Published var latestSkeletonFrame: SkeletonOverlayFrame?
     
     // MARK: - Translation Session Management
     
@@ -95,6 +96,7 @@ class TranslationService: ObservableObject {
             self.isModelLoaded = false
             self.currentModel = "SLRT Backend"
             self.currentTranslation = ""
+            self.latestSkeletonFrame = nil
             self.connectionStatus = "Connecting"
             self.lastErrorMessage = nil
         }
@@ -109,7 +111,7 @@ class TranslationService: ObservableObject {
     func processFrame(_ frame: CIImage) -> TranslationResult? {
         guard isTranslating else { return nil }
         let now = Date()
-        guard let imageJpegBase64 = encodeFrame(frame) else {
+        guard let encodedFrame = encodeFrame(frame) else {
             publishError(SignLanguageError.processingFailed("Failed to encode camera frame"))
             return nil
         }
@@ -118,7 +120,7 @@ class TranslationService: ObservableObject {
 
         Task {
             await submitFrame(
-                imageJpegBase64: imageJpegBase64,
+                encodedFrame: encodedFrame,
                 frameIndex: submission.frameIndex,
                 timestampMs: submission.timestampMs
             )
@@ -153,6 +155,7 @@ class TranslationService: ObservableObject {
         DispatchQueue.main.async {
             self.completedSessions.removeAll()
             self.currentTranslation = ""
+            self.latestSkeletonFrame = nil
         }
     }
     
@@ -204,6 +207,7 @@ class TranslationService: ObservableObject {
         )
         DispatchQueue.main.async {
             self.currentTranslation = ""
+            self.latestSkeletonFrame = nil
         }
     }
 
@@ -216,6 +220,7 @@ class TranslationService: ObservableObject {
             currentSession = nil
             DispatchQueue.main.async {
                 self.currentTranslation = ""
+                self.latestSkeletonFrame = nil
             }
             return
         }
@@ -227,6 +232,7 @@ class TranslationService: ObservableObject {
         DispatchQueue.main.async {
             self.completedSessions.append(session)
             self.currentTranslation = ""
+            self.latestSkeletonFrame = nil
             self.onTranslationSessionComplete?(session)
         }
     }
@@ -242,6 +248,9 @@ class TranslationService: ObservableObject {
             isStoppingSession = false
             lastSubmittedFrameAt = .distantPast
             lastInferenceAt = .distantPast
+        }
+        DispatchQueue.main.async {
+            self.latestSkeletonFrame = nil
         }
     }
 
@@ -355,7 +364,7 @@ class TranslationService: ObservableObject {
         }
     }
 
-    private func submitFrame(imageJpegBase64: String, frameIndex: Int, timestampMs: Int) async {
+    private func submitFrame(encodedFrame: EncodedFramePayload, frameIndex: Int, timestampMs: Int) async {
         guard let sessionId = stateQueue.sync(execute: { backendSessionId }) else {
             stateQueue.sync {
                 isSendingFrame = false
@@ -373,7 +382,9 @@ class TranslationService: ObservableObject {
             let frameRequest = BackendFrameUploadRequest(
                 frameIndex: frameIndex,
                 timestampMs: timestampMs,
-                imageJpegBase64: imageJpegBase64
+                imageJpegBase64: encodedFrame.imageJpegBase64,
+                imageWidth: encodedFrame.imageWidth,
+                imageHeight: encodedFrame.imageHeight
             )
             let response: BackendTranslationEvent = try await sendRequest(
                 path: "/api/v1/translation/session/\(sessionId)/frame",
@@ -422,6 +433,14 @@ class TranslationService: ObservableObject {
     }
 
     private func applyTranslationEvent(_ response: BackendTranslationEvent) {
+        if let skeletonFrame = response.skeletonFrame,
+            let overlayFrame = SkeletonOverlayFrame(response: skeletonFrame)
+        {
+            DispatchQueue.main.async {
+                self.latestSkeletonFrame = overlayFrame
+            }
+        }
+
         if let text = response.text, !text.isEmpty {
             currentSession?.translationText = text
             DispatchQueue.main.async {
@@ -506,19 +525,24 @@ class TranslationService: ObservableObject {
         return try JSONDecoder().decode(Response.self, from: data)
     }
 
-    private func encodeFrame(_ frame: CIImage) -> String? {
+    private func encodeFrame(_ frame: CIImage) -> EncodedFramePayload? {
         let extent = frame.extent.integral
         guard extent.width > 0, extent.height > 0 else { return nil }
 
         let scale = min(1.0, maxEncodedFrameDimension / max(extent.width, extent.height))
         let resizedFrame = scale < 1.0 ? frame.transformed(by: CGAffineTransform(scaleX: scale, y: scale)) : frame
+        let resizedExtent = resizedFrame.extent.integral
 
         guard let cgImage = ciContext.createCGImage(resizedFrame, from: resizedFrame.extent) else { return nil }
 
         #if canImport(UIKit)
             let image = UIImage(cgImage: cgImage)
             guard let data = image.jpegData(compressionQuality: jpegCompressionQuality) else { return nil }
-            return data.base64EncodedString()
+            return EncodedFramePayload(
+                imageJpegBase64: data.base64EncodedString(),
+                imageWidth: max(Int(resizedExtent.width.rounded()), 1),
+                imageHeight: max(Int(resizedExtent.height.rounded()), 1)
+            )
         #else
             return nil
         #endif
@@ -547,6 +571,43 @@ private struct ReservedFrameSubmission {
     let timestampMs: Int
 }
 
+private struct EncodedFramePayload {
+    let imageJpegBase64: String
+    let imageWidth: Int
+    let imageHeight: Int
+}
+
+struct SkeletonKeypoint: Identifiable {
+    let id = UUID()
+    let x: CGFloat
+    let y: CGFloat
+    let confidence: CGFloat
+}
+
+struct SkeletonOverlayFrame {
+    let frameIndex: Int
+    let timestampMs: Int
+    let sourceSize: CGSize
+    let keypoints: [SkeletonKeypoint]
+
+    init?(response: BackendSkeletonFrame) {
+        guard response.sourceSize.width > 0, response.sourceSize.height > 0 else { return nil }
+        let points = response.keypoints.compactMap { point -> SkeletonKeypoint? in
+            guard point.count >= 2 else { return nil }
+            return SkeletonKeypoint(
+                x: CGFloat(point[0]),
+                y: CGFloat(point[1]),
+                confidence: CGFloat(point.count > 2 ? point[2] : 1.0)
+            )
+        }
+        guard !points.isEmpty else { return nil }
+        self.frameIndex = response.frameIndex
+        self.timestampMs = response.timestampMs
+        self.sourceSize = CGSize(width: response.sourceSize.width, height: response.sourceSize.height)
+        self.keypoints = points
+    }
+}
+
 private struct BackendHealthResponse: Decodable {
     let status: String
     let modelLoaded: Bool
@@ -568,6 +629,8 @@ private struct BackendFrameUploadRequest: Encodable {
     let frameIndex: Int
     let timestampMs: Int
     let imageJpegBase64: String
+    let imageWidth: Int
+    let imageHeight: Int
 }
 
 private struct BackendInferenceRequest: Encodable {
@@ -590,6 +653,19 @@ private struct BackendTranslationEvent: Decodable {
     let decodeMethod: String?
     let candidates: [BackendTranslationCandidate]
     let notes: [String]
+    let skeletonFrame: BackendSkeletonFrame?
+}
+
+struct BackendFrameSize: Decodable {
+    let width: Double
+    let height: Double
+}
+
+struct BackendSkeletonFrame: Decodable {
+    let frameIndex: Int
+    let timestampMs: Int
+    let sourceSize: BackendFrameSize
+    let keypoints: [[Double]]
 }
 
 private struct BackendErrorResponse: Decodable {

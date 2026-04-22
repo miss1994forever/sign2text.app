@@ -374,7 +374,13 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
 
         #if os(iOS)
             // Set orientation for optimal gesture capture
-            if connection.isVideoOrientationSupported {
+            if #available(iOS 17.0, *) {
+                let rotationAngle: CGFloat = (currentCameraInput?.device.position == .front) ? 270 : 90
+                if connection.isVideoRotationAngleSupported(rotationAngle) {
+                    connection.videoRotationAngle = rotationAngle
+                    print("📷 Video rotation angle set to \(rotationAngle) degrees")
+                }
+            } else if connection.isVideoOrientationSupported {
                 connection.videoOrientation = .portrait
                 print("📷 Video orientation set to portrait")
             }
@@ -436,21 +442,41 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
 // MARK: - AVCaptureVideoDataOutputSampleBufferDelegate
 
 extension CameraManager {
+    private func currentVideoRotationAngle(for connection: AVCaptureConnection) -> Int {
+        if #available(iOS 17.0, *) {
+            let normalized = connection.videoRotationAngle.truncatingRemainder(dividingBy: 360)
+            return Int(normalized.rounded())
+        }
+
+        switch connection.videoOrientation {
+        case .portrait:
+            return 90
+        case .portraitUpsideDown:
+            return 270
+        case .landscapeRight:
+            return 0
+        case .landscapeLeft:
+            return 180
+        @unknown default:
+            return 90
+        }
+    }
+
     private func previewAlignedImage(from pixelBuffer: CVPixelBuffer, connection: AVCaptureConnection) -> CIImage {
         let image = CIImage(cvPixelBuffer: pixelBuffer)
 
         #if os(iOS)
             let exifOrientation: Int32
-            switch connection.videoOrientation {
-            case .portrait:
+            switch currentVideoRotationAngle(for: connection) {
+            case 90:
                 exifOrientation = connection.isVideoMirrored ? 5 : 6
-            case .portraitUpsideDown:
+            case 270:
                 exifOrientation = connection.isVideoMirrored ? 7 : 8
-            case .landscapeRight:
+            case 0:
                 exifOrientation = connection.isVideoMirrored ? 4 : 1
-            case .landscapeLeft:
+            case 180:
                 exifOrientation = connection.isVideoMirrored ? 2 : 3
-            @unknown default:
+            default:
                 exifOrientation = connection.isVideoMirrored ? 5 : 6
             }
             return image.oriented(forExifOrientation: Int(exifOrientation))

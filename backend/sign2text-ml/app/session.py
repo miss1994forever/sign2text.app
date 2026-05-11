@@ -117,6 +117,10 @@ class SessionManager:
         with self._lock:
             self._sessions.pop(session_id, None)
 
+    def clear(self) -> None:
+        with self._lock:
+            self._sessions.clear()
+
     def count(self) -> int:
         with self._lock:
             return len(self._sessions)

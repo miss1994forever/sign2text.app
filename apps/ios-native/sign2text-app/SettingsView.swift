@@ -15,6 +15,7 @@ struct SettingsView: View {
     @EnvironmentObject var translationService: TranslationService
 
     @State private var backendURLDraft = ""
+    @State private var datasetPresetDraft: TranslationDatasetPreset = .cslDaily
     @State private var cameraPosition = "Front"
     @State private var frameRate = 30
     @State private var hapticFeedback = true
@@ -57,6 +58,22 @@ struct SettingsView: View {
                 }
 
                 Section(header: Text("Translation Model")) {
+                    Picker("Dataset Preset", selection: $datasetPresetDraft) {
+                        ForEach(TranslationDatasetPreset.allCases) { preset in
+                            Text(preset.title)
+                                .tag(preset)
+                        }
+                    }
+
+                    Button(translationService.isSwitchingDatasetPreset ? "Switching..." : "Apply Translation Preset") {
+                        translationService.setBackendURL(backendURLDraft)
+                        translationService.switchDatasetPreset(datasetPresetDraft)
+                    }
+                    .disabled(
+                        translationService.isSwitchingDatasetPreset
+                            || datasetPresetDraft == translationService.selectedDatasetPreset
+                    )
+
                     HStack {
                         Text("Current Model")
                         Spacer()
@@ -83,6 +100,10 @@ struct SettingsView: View {
                             }
 
                         Text("Recommended for AutoDL + iPhone: run the backend on AutoDL port 6006, forward it to your Mac with SSH, then fill in your Mac LAN IP here.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        Text("The preset switch updates the backend runtime between CSL-Daily and PHOENIX. If wait-k assets are missing, the backend will still fall back to gloss output.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -184,6 +205,10 @@ struct SettingsView: View {
         .preferredColorScheme(themeManager.currentTheme.colorScheme)
         .onAppear {
             backendURLDraft = translationService.backendURL
+            datasetPresetDraft = translationService.selectedDatasetPreset
+        }
+        .onChange(of: translationService.selectedDatasetPreset) { _, newValue in
+            datasetPresetDraft = newValue
         }
     }
 }

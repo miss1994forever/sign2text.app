@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from threading import Lock
+
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 
-from .config import settings
+from .config import VALID_DATASET_PRESETS, build_settings, settings as initial_settings
 from .pose import PoseDependencyError, WholeBodyPoseExtractor
 from .preprocessing import build_tensors_from_session
 from .runtime import OnlineCSLRRuntime
@@ -14,6 +16,7 @@ from .schemas import (
     KeypointUploadRequest,
     SessionCreateRequest,
     SessionCreateResponse,
+    RuntimePresetRequest,
     SkeletonFrameResponse,
     TensorInferenceRequest,
     TranslationCandidate,
@@ -25,20 +28,43 @@ from .slt_runtime import WaitKSLTRuntime, WaitKSLTRuntimeError
 
 
 app = FastAPI(title="Sign2Text SLRT Service", version="0.1.0")
+settings = initial_settings
 runtime = OnlineCSLRRuntime(settings)
 slt_runtime = WaitKSLTRuntime(settings)
 pose_extractor = WholeBodyPoseExtractor(settings)
 session_manager = SessionManager(max_buffer_frames=settings.max_buffer_frames)
+runtime_switch_lock = Lock()
 
 
 @app.on_event("startup")
 def startup() -> None:
-    if settings.eager_load:
+    initialize_runtime_components(eager_load=True)
+
+
+def initialize_runtime_components(eager_load: bool = False) -> None:
+    if eager_load and settings.eager_load:
         runtime.load()
-    if settings.enable_slt and settings.slt_eager_load:
-        slt_runtime.load()
-    if settings.pose_eager_load:
+    if eager_load and settings.enable_slt and settings.slt_eager_load:
+        try:
+            slt_runtime.load()
+        except WaitKSLTRuntimeError:
+            pass
+    if eager_load and settings.pose_eager_load:
         pose_extractor.load()
+
+
+def switch_runtime_preset(dataset_preset: str) -> None:
+    global settings, runtime, slt_runtime, pose_extractor, session_manager
+
+    next_settings = build_settings(dataset_preset=dataset_preset)
+
+    settings = next_settings
+    runtime = OnlineCSLRRuntime(settings)
+    slt_runtime = WaitKSLTRuntime(settings)
+    pose_extractor = WholeBodyPoseExtractor(settings)
+    session_manager.clear()
+    session_manager = SessionManager(max_buffer_frames=settings.max_buffer_frames)
+    initialize_runtime_components(eager_load=True)
 
 
 def build_health_response() -> HealthResponse:
@@ -47,10 +73,14 @@ def build_health_response() -> HealthResponse:
         modelLoaded=runtime.loaded,
         translationModelLoaded=slt_runtime.loaded,
         poseExtractorLoaded=pose_extractor.loaded,
+        datasetPreset=settings.dataset_preset,
+        sltEnabled=settings.enable_slt,
+        availablePresets=list(VALID_DATASET_PRESETS),
         device=settings.device,
         activeSessions=session_manager.count(),
         configPath=str(settings.config_path),
         checkpointPath=str(settings.checkpoint_path),
+        sltConfigPath=str(settings.slt_config_path),
     )
 
 
@@ -108,6 +138,13 @@ def load_runtime() -> HealthResponse:
             slt_runtime.load()
         except WaitKSLTRuntimeError:
             pass
+    return build_health_response()
+
+
+@app.post("/api/v1/runtime/preset", response_model=HealthResponse)
+def set_runtime_preset(request: RuntimePresetRequest) -> HealthResponse:
+    with runtime_switch_lock:
+        switch_runtime_preset(request.datasetPreset)
     return build_health_response()
 
 

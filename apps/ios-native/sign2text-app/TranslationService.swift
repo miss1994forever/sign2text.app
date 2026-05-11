@@ -15,6 +15,22 @@ import SwiftUI
     import UIKit
 #endif
 
+enum TranslationDatasetPreset: String, CaseIterable, Identifiable {
+    case cslDaily = "csl-daily"
+    case phoenix = "phoenix"
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .cslDaily:
+            return "CSL-Daily"
+        case .phoenix:
+            return "PHOENIX"
+        }
+    }
+}
+
 // MARK: - Translation Service
 
 /// A service that handles real-time translation of sign language captured via camera frames into text.
@@ -29,6 +45,11 @@ class TranslationService: ObservableObject {
     @Published var connectionStatus = "Disconnected"
     @Published var lastErrorMessage: String?
     @Published var latestSkeletonFrame: SkeletonOverlayFrame?
+    @Published var selectedDatasetPreset: TranslationDatasetPreset = {
+        let stored = UserDefaults.standard.string(forKey: "sign2text.datasetPreset") ?? TranslationDatasetPreset.cslDaily.rawValue
+        return TranslationDatasetPreset(rawValue: stored) ?? .cslDaily
+    }()
+    @Published var isSwitchingDatasetPreset = false
     
     // MARK: - Translation Session Management
     
@@ -182,9 +203,7 @@ class TranslationService: ObservableObject {
             do {
                 let health: BackendHealthResponse = try await sendRequest(path: "/api/v1/health", method: "GET")
                 await MainActor.run {
-                    self.isModelLoaded = health.modelLoaded
-                    self.connectionStatus = health.status == "ok" ? "Backend reachable" : health.status
-                    self.lastErrorMessage = nil
+                    self.applyBackendHealth(health)
                 }
             } catch {
                 publishError(error)
@@ -198,6 +217,38 @@ class TranslationService: ObservableObject {
     var statusSummary: String {
         let errorSuffix = (lastErrorMessage?.isEmpty == false) ? " • \(lastErrorMessage!)" : ""
         return "\(connectionStatus) • Model: \(currentModel)\(errorSuffix)"
+    }
+
+    func switchDatasetPreset(_ preset: TranslationDatasetPreset) {
+        let previousPreset = selectedDatasetPreset
+
+        DispatchQueue.main.async {
+            self.isSwitchingDatasetPreset = true
+            self.selectedDatasetPreset = preset
+            self.connectionStatus = "Switching preset"
+            self.lastErrorMessage = nil
+        }
+
+        Task {
+            do {
+                let response: BackendHealthResponse = try await sendRequest(
+                    path: "/api/v1/runtime/preset",
+                    method: "POST",
+                    body: BackendRuntimePresetRequest(datasetPreset: preset.rawValue)
+                )
+
+                await MainActor.run {
+                    self.applyBackendHealth(response)
+                    self.isSwitchingDatasetPreset = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.selectedDatasetPreset = previousPreset
+                    self.isSwitchingDatasetPreset = false
+                }
+                publishError(error)
+            }
+        }
     }
 
     private func startNewTranslationSession() {
@@ -269,11 +320,11 @@ class TranslationService: ObservableObject {
             if !health.modelLoaded {
                 let loaded: BackendHealthResponse = try await sendRequest(path: "/api/v1/runtime/load", method: "POST")
                 await MainActor.run {
-                    self.isModelLoaded = loaded.modelLoaded
+                    self.applyBackendHealth(loaded)
                 }
             } else {
                 await MainActor.run {
-                    self.isModelLoaded = health.modelLoaded
+                    self.applyBackendHealth(health)
                 }
             }
 
@@ -281,6 +332,7 @@ class TranslationService: ObservableObject {
                 "client": "ios-native",
                 "platform": "ios",
                 "app": "sign2text-app",
+                "datasetPreset": selectedDatasetPreset.rawValue,
             ])
             let createResponse: BackendSessionCreateResponse = try await sendRequest(
                 path: "/api/v1/translation/session",
@@ -295,7 +347,7 @@ class TranslationService: ObservableObject {
 
             await MainActor.run {
                 self.connectionStatus = "Streaming"
-                self.currentModel = "SLRT Backend"
+                self.currentModel = "SLRT \(self.selectedDatasetPreset.title)"
                 self.lastErrorMessage = nil
             }
         } catch {
@@ -457,6 +509,22 @@ class TranslationService: ObservableObject {
         }
     }
 
+    private func applyBackendHealth(_ health: BackendHealthResponse) {
+        isModelLoaded = health.modelLoaded
+        connectionStatus = health.status == "ok" ? "Backend reachable" : health.status
+        lastErrorMessage = nil
+
+        if let datasetPreset = health.datasetPreset,
+            let resolvedPreset = TranslationDatasetPreset(rawValue: datasetPreset)
+        {
+            selectedDatasetPreset = resolvedPreset
+            UserDefaults.standard.set(resolvedPreset.rawValue, forKey: "sign2text.datasetPreset")
+        }
+
+        let presetTitle = selectedDatasetPreset.title
+        currentModel = health.sltEnabled == true ? "SLRT \(presetTitle)" : "SLRT \(presetTitle) (gloss)"
+    }
+
     private func publishError(_ error: Error) {
         let message: String
         if let signLanguageError = error as? SignLanguageError {
@@ -613,6 +681,12 @@ private struct BackendHealthResponse: Decodable {
     let modelLoaded: Bool
     let poseExtractorLoaded: Bool
     let device: String
+    let datasetPreset: String?
+    let sltEnabled: Bool?
+}
+
+private struct BackendRuntimePresetRequest: Encodable {
+    let datasetPreset: String
 }
 
 private struct BackendSessionCreateRequest: Encodable {

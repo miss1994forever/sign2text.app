@@ -145,6 +145,19 @@ struct DictionaryView: View {
 
     private var headerSection: some View {
         VStack(spacing: 12) {
+            Picker("Dictionary Dataset", selection: datasetSelection) {
+                ForEach(DictionaryDataset.allCases) { dataset in
+                    Text(dataset.title)
+                        .tag(dataset)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            Text(dictionaryManager.selectedDataset.subtitle)
+                .font(.caption)
+                .foregroundColor(themeManager.colors.secondaryText)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
             // Search bar
             HStack {
                 Image(systemName: "magnifyingglass")
@@ -186,6 +199,17 @@ struct DictionaryView: View {
         .padding(.horizontal)
         .padding(.vertical, 8)
         .background(themeManager.colors.background)
+        .onChange(of: dictionaryManager.selectedDataset) { _, _ in
+            searchText = ""
+            selectedCategory = .general
+        }
+    }
+
+    private var datasetSelection: Binding<DictionaryDataset> {
+        Binding(
+            get: { dictionaryManager.selectedDataset },
+            set: { dictionaryManager.selectDataset($0) }
+        )
     }
 
     // MARK: - Word List View
@@ -312,20 +336,7 @@ struct WordCard: View {
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 8) {
-                // Image placeholder or actual image
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(themeManager.colors.secondaryBackground)
-                    .frame(height: 120)
-                    .overlay(
-                        VStack {
-                            Image(systemName: "photo")
-                                .font(.title)
-                                .foregroundColor(themeManager.colors.secondaryText)
-                            Text("No Image")
-                                .font(.caption)
-                                .foregroundColor(themeManager.colors.secondaryText)
-                        }
-                    )
+                dictionaryPreview
 
                 // Word information
                 VStack(alignment: .leading, spacing: 4) {
@@ -352,7 +363,7 @@ struct WordCard: View {
 
                         Spacer()
 
-                        Text("No images")
+                        Text(imageStatusText)
                             .font(.caption2)
                             .foregroundColor(themeManager.colors.secondaryText)
                     }
@@ -365,6 +376,78 @@ struct WordCard: View {
             .shadow(color: themeManager.colors.shadow, radius: 2, x: 0, y: 1)
         }
         .buttonStyle(PlainButtonStyle())
+    }
+
+    private var dictionaryPreview: some View {
+        RoundedRectangle(cornerRadius: 8)
+            .fill(previewGradient)
+            .frame(height: 120)
+            .overlay(alignment: .topLeading) {
+                Text(datasetBadgeText)
+                    .font(.caption2)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white.opacity(0.9))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(Color.black.opacity(0.18))
+                    .clipShape(Capsule())
+                    .padding(10)
+            }
+            .overlay {
+                VStack(spacing: 8) {
+                    Image(systemName: previewSymbolName)
+                        .font(.system(size: 30, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.95))
+
+                    Text(previewLabel)
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .padding(.horizontal, 10)
+                }
+            }
+    }
+
+    private var previewGradient: LinearGradient {
+        if datasetBadgeText == DictionaryDataset.phoenix.title {
+            return LinearGradient(
+                colors: [Color(red: 0.15, green: 0.42, blue: 0.71), Color(red: 0.37, green: 0.72, blue: 0.82)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+
+        return LinearGradient(
+            colors: [Color(red: 0.89, green: 0.46, blue: 0.20), Color(red: 0.97, green: 0.75, blue: 0.32)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var previewLabel: String {
+        let trimmed = word.word.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "Preview" }
+
+        if trimmed.count <= 4 {
+            return trimmed
+        }
+
+        return String(trimmed.prefix(4))
+    }
+
+    private var datasetBadgeText: String {
+        word.addedBy ?? "Custom"
+    }
+
+    private var previewSymbolName: String {
+        datasetBadgeText == DictionaryDataset.phoenix.title ? "cloud.sun.fill" : "hand.raised.fill"
+    }
+
+    private var imageStatusText: String {
+        let count = word.mediaFiles.filter { $0.type == .image }.count
+        return count == 1 ? "1 image" : "\(count) images"
     }
 }
 

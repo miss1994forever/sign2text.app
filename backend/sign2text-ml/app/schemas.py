@@ -10,10 +10,14 @@ class HealthResponse(BaseModel):
     modelLoaded: bool
     translationModelLoaded: bool
     poseExtractorLoaded: bool
+    datasetPreset: str
+    sltEnabled: bool
+    availablePresets: List[str] = Field(default_factory=list)
     device: str
     activeSessions: int
     configPath: str
     checkpointPath: str
+    sltConfigPath: str
 
 
 class SessionCreateRequest(BaseModel):
@@ -48,6 +52,10 @@ class TensorInferenceRequest(BaseModel):
     videoTensorPath: str
     keypointTensorPath: str
     predSrc: Literal["ensemble", "fuse"] = "ensemble"
+
+
+class RuntimePresetRequest(BaseModel):
+    datasetPreset: Literal["csl-daily", "phoenix"]
 
 
 class TranslationCandidate(BaseModel):

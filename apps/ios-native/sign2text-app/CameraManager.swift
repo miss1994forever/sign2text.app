@@ -204,6 +204,9 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
             DispatchQueue.main.async {
                 let previewLayer = AVCaptureVideoPreviewLayer(session: self.captureSession)
                 previewLayer.videoGravity = .resizeAspectFill
+                if let connection = previewLayer.connection {
+                    self.configureConnection(connection)
+                }
                 #if canImport(UIKit)
                     previewLayer.backgroundColor = UIColor.black.cgColor
                 #endif
@@ -366,14 +369,20 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
     private func configureVideoOutputConnection() {
         guard let connection = videoOutput.connection(with: .video) else { return }
 
-        // Mirror for front camera (natural for sign language users)
-        if connection.isVideoMirroringSupported && currentCameraInput?.device.position == .front {
-            connection.isVideoMirrored = true
-            print("📷 Video mirroring enabled for front camera")
+        configureConnection(connection)
+    }
+
+    private func configureConnection(_ connection: AVCaptureConnection) {
+        if connection.isVideoMirroringSupported {
+            let shouldMirror = currentCameraInput?.device.position == .front
+            connection.automaticallyAdjustsVideoMirroring = false
+            connection.isVideoMirrored = shouldMirror
+            if shouldMirror {
+                print("📷 Video mirroring enabled for front camera")
+            }
         }
 
         #if os(iOS)
-            // Set orientation for optimal gesture capture
             if #available(iOS 17.0, *) {
                 let rotationAngle: CGFloat = (currentCameraInput?.device.position == .front) ? 270 : 90
                 if connection.isVideoRotationAngleSupported(rotationAngle) {

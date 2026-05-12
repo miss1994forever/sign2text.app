@@ -315,63 +315,6 @@ struct ContentView: View {
                     .padding(.horizontal)
                     .padding(.bottom, 30)
                 }
-
-                if !cameraManager.permissionGranted {
-                    ZStack {
-                        themeManager.colors.background.opacity(0.95)
-                            .edgesIgnoringSafeArea(.all)
-
-                        VStack(spacing: 20) {
-                            Image(systemName: "camera.fill")
-                                .font(.system(size: 60))
-                                .foregroundColor(themeManager.colors.primaryText)
-
-                            Text("Camera Permission Required")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(themeManager.colors.primaryText)
-                                .multilineTextAlignment(.center)
-
-                            Text(
-                                "SignScribe needs camera access to translate sign language into text in real-time."
-                            )
-                            .foregroundColor(themeManager.colors.secondaryText)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
-
-                            VStack(spacing: 12) {
-                                Button(action: openSettings) {
-                                    HStack {
-                                        Image(systemName: "gear")
-                                        Text("Open Settings")
-                                    }
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.white)
-                                    .frame(width: 200, height: 50)
-                                    .background(themeManager.colors.accent)
-                                    .cornerRadius(10)
-                                }
-
-                                Button(action: { cameraManager.checkPermission() }) {
-                                    HStack {
-                                        Image(systemName: "arrow.clockwise")
-                                        Text("Try Again")
-                                    }
-                                    .fontWeight(.medium)
-                                    .foregroundColor(themeManager.colors.accent)
-                                    .frame(width: 200, height: 50)
-                                    .background(Color.clear)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 10)
-                                            .stroke(themeManager.colors.accent, lineWidth: 1)
-                                    )
-                                }
-                            }
-                            .padding(.top, 10)
-                        }
-                        .padding()
-                    }
-                }
             }
         }
         #if os(iOS)

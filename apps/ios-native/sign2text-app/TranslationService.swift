@@ -505,7 +505,22 @@ class TranslationService: ObservableObject {
         }
 
         DispatchQueue.main.async {
-            self.connectionStatus = response.status.capitalized
+            switch response.type {
+            case "frame_buffered", "keypoints_buffered":
+                if self.connectionStatus == "Connecting" || self.connectionStatus == "Disconnected" {
+                    self.connectionStatus = "Streaming"
+                }
+            case "partial_translation":
+                if response.status == "ok" {
+                    self.connectionStatus = "Processing"
+                } else if response.frameCount > 0 && response.keypointCount > 0 {
+                    self.connectionStatus = "Processing"
+                } else {
+                    self.connectionStatus = response.status.capitalized
+                }
+            default:
+                self.connectionStatus = response.status.capitalized
+            }
         }
     }
 

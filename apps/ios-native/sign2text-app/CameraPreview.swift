@@ -14,21 +14,19 @@ import SwiftUI
     import UIKit
 
     struct CameraPreview: UIViewRepresentable {
-        let session: AVCaptureSession
-
-        init(previewLayer: AVCaptureVideoPreviewLayer) {
-            // Unused, but kept for compatibility. We extract the session.
-            self.session = previewLayer.session!
-        }
+        let previewLayer: AVCaptureVideoPreviewLayer
 
         func makeUIView(context: Context) -> CameraPreviewView {
             let view = CameraPreviewView()
-            view.videoPreviewLayer.session = session
+            view.backgroundColor = .black
             view.videoPreviewLayer.videoGravity = .resizeAspectFill
+            view.videoPreviewLayer.session = previewLayer.session
             return view
         }
 
         func updateUIView(_ uiView: CameraPreviewView, context: Context) {
+            uiView.videoPreviewLayer.session = previewLayer.session
+            uiView.videoPreviewLayer.videoGravity = .resizeAspectFill
         }
     }
 
@@ -36,11 +34,11 @@ import SwiftUI
 
     class CameraPreviewView: UIView {
         override class var layerClass: AnyClass {
-            return AVCaptureVideoPreviewLayer.self
+            AVCaptureVideoPreviewLayer.self
         }
-        
+
         var videoPreviewLayer: AVCaptureVideoPreviewLayer {
-            return layer as! AVCaptureVideoPreviewLayer
+            layer as! AVCaptureVideoPreviewLayer
         }
     }
 
@@ -220,17 +218,23 @@ struct SkeletonOverlay: View {
     }
 
     private func mapPoints(to canvasSize: CGSize) -> [RenderedSkeletonPoint] {
-        let sourceSize = skeletonFrame.sourceSize
-        let scale = max(canvasSize.width / sourceSize.width, canvasSize.height / sourceSize.height)
-        let scaledWidth = sourceSize.width * scale
-        let scaledHeight = sourceSize.height * scale
+        let sourceWidth = skeletonFrame.sourceSize.height
+        let sourceHeight = skeletonFrame.sourceSize.width
+
+        let scale = max(canvasSize.width / sourceWidth, canvasSize.height / sourceHeight)
+        let scaledWidth = sourceWidth * scale
+        let scaledHeight = sourceHeight * scale
         let xOffset = (canvasSize.width - scaledWidth) / 2
         let yOffset = (canvasSize.height - scaledHeight) / 2
 
         return skeletonFrame.keypoints.enumerated().map { index, point in
+            let rotatedX = point.y
+            let rotatedY = point.x
+            let mirroredX = isMirrored ? (sourceWidth - rotatedX) : rotatedX
+            
             let location = CGPoint(
-                x: xOffset + point.x * scale,
-                y: yOffset + point.y * scale
+                x: xOffset + mirroredX * scale,
+                y: yOffset + rotatedY * scale
             )
             let isHandPoint = (91 ... 132).contains(index)
             let color = isHandPoint

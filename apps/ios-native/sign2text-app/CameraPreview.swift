@@ -14,41 +14,33 @@ import SwiftUI
     import UIKit
 
     struct CameraPreview: UIViewRepresentable {
-        let previewLayer: AVCaptureVideoPreviewLayer
+        let session: AVCaptureSession
 
         init(previewLayer: AVCaptureVideoPreviewLayer) {
-            self.previewLayer = previewLayer
-            previewLayer.videoGravity = .resizeAspectFill
+            // Unused, but kept for compatibility. We extract the session.
+            self.session = previewLayer.session!
         }
 
         func makeUIView(context: Context) -> CameraPreviewView {
             let view = CameraPreviewView()
-            // Add the layer as soon as the view is made
-            view.layer.addSublayer(previewLayer)
+            view.videoPreviewLayer.session = session
+            view.videoPreviewLayer.videoGravity = .resizeAspectFill
             return view
         }
 
         func updateUIView(_ uiView: CameraPreviewView, context: Context) {
-            // The frame will be updated by the layoutSubviews in the CameraPreviewView
         }
     }
 
     // MARK: - Custom UIView for Camera Preview
 
     class CameraPreviewView: UIView {
-        override func layoutSubviews() {
-            super.layoutSubviews()
-
-            // Update all sublayers to match the view bounds
-            layer.sublayers?.forEach { sublayer in
-                if let previewLayer = sublayer as? AVCaptureVideoPreviewLayer {
-                    previewLayer.frame = bounds
-                }
-            }
-        }
-
         override class var layerClass: AnyClass {
-            return CALayer.self
+            return AVCaptureVideoPreviewLayer.self
+        }
+        
+        var videoPreviewLayer: AVCaptureVideoPreviewLayer {
+            return layer as! AVCaptureVideoPreviewLayer
         }
     }
 

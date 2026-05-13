@@ -205,7 +205,7 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
                 let previewLayer = AVCaptureVideoPreviewLayer(session: self.captureSession)
                 previewLayer.videoGravity = .resizeAspectFill
                 if let connection = previewLayer.connection {
-                    self.configureConnection(connection)
+                    self.configurePreviewConnection(connection)
                 }
                 #if canImport(UIKit)
                     previewLayer.backgroundColor = UIColor.black.cgColor
@@ -369,10 +369,10 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
     private func configureVideoOutputConnection() {
         guard let connection = videoOutput.connection(with: .video) else { return }
 
-        configureConnection(connection)
+        configureProcessingConnection(connection)
     }
 
-    private func configureConnection(_ connection: AVCaptureConnection) {
+    private func configurePreviewConnection(_ connection: AVCaptureConnection) {
         if connection.isVideoMirroringSupported {
             let shouldMirror = currentCameraInput?.device.position == .front
             connection.automaticallyAdjustsVideoMirroring = false
@@ -381,6 +381,21 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
                 print("📷 Video mirroring enabled for front camera")
             }
         }
+
+        configureConnectionRotation(connection)
+    }
+
+    private func configureProcessingConnection(_ connection: AVCaptureConnection) {
+        if connection.isVideoMirroringSupported {
+            connection.automaticallyAdjustsVideoMirroring = false
+            connection.isVideoMirrored = false
+            print("📷 Processing stream mirroring disabled")
+        }
+
+        configureConnectionRotation(connection)
+    }
+
+    private func configureConnectionRotation(_ connection: AVCaptureConnection) {
 
         #if os(iOS)
             if #available(iOS 17.0, *) {

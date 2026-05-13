@@ -1,0 +1,948 @@
+Continuous Sign Language Recognition with Correlation Network
+Lianyu Hu, Liqing Gao, Zekang Liu, Wei Feng
+College of Intelligence and Computing, Tianjin University, Tianjin 300350, China
+Code : https://github.com/hulianyuyy/CorrNet
+Abstract
+Human body trajectories are a salient cue to identify
+actions in the video. Such body trajectories are mainly
+conveyed by hands and face across consecutive frames in
+sign language. However, current methods in continuous
+sign language recognition (CSLR) usually process frames
+independently, thus failing to capture cross-frame trajec-
+tories to effectively identify a sign. To handle this limita-
+tion, we propose correlation network (CorrNet) to explic-
+itly capture and leverage body trajectories across frames to
+identify signs. In specific, a correlation module is first pro-
+posed to dynamically compute correlation maps between
+the current frame and adjacent frames to identify trajec-
+tories of all spatial patches. An identification module is
+then presented to dynamically emphasize the body trajec-
+tories within these correlation maps. As a result, the gen-
+erated features are able to gain an overview of local tem-
+poral movements to identify a sign. Thanks to its spe-
+cial attention on body trajectories, CorrNet achieves new
+state-of-the-art accuracy on four large-scale datasets, i.e.,
+PHOENIX14, PHOENIX14-T, CSL-Daily, and CSL. A com-
+prehensive comparison with previous spatial-temporal rea-
+soning methods verifies the effectiveness of CorrNet. Visu-
+alizations demonstrate the effects of CorrNet on emphasiz-
+ing human body trajectories across adjacent frames.
+1. Introduction
+Sign language is one of the most widely-used commu-
+nication tools for the deaf community in their daily life.
+However, mastering this language is rather difficult and
+time-consuming for the hearing people, thus hindering di-
+rect communications between two groups. To relieve this
+problem, isolated sign language recognition tries to classify
+a video segment into an independent gloss1. Continuous
+sign language recognition (CSLR) progresses by sequen-
+tially translating images into a series of glosses to express a
+sentence, more prospective toward real-life deployment.
+1Gloss is the atomic lexical unit to annotate sign languages.
+Left frame Right frameFigure 1. Visualization of correlation maps with Grad-CAM [39].
+It’s observed that without extra supervision, our method could well
+attend to informative regions in adjacent left/right frames to iden-
+tify human body trajectories.
+Human body trajectories are a salient cue to identify ac-
+tions in human-centric video understanding [44]. In sign
+language, such trajectories are mainly conveyed by both
+manual components (hand/arm gestures), and non-manual
+components (facial expressions, head movements, and body
+postures) [10,35]. Especially, both hands move horizontally
+and vertically across consecutive frames quickly, with fin-
+ger twisting and facial expressions to express a sign. To
+track and leverage such body trajectories is of great impor-
+tance to understanding sign language.
+However, current CSLR methods [5, 6, 16, 33, 34, 36, 54]
+usually process each frame separately, thus failing to exploit
+such critical cues in the early stage. Especially, they usually
+adopt a shared 2D CNN to capture spatial features for each
+frame independently. In this sense, frames are processed
+individually without interactions with adjacent neighbors,
+thus inhibited to identify and leverage cross-frame trajec-
+tories to express a sign. The generated features are thus
+not aware of local temporal patterns and fail to perceive
+the hand/face movements in expressing a sign. To han-
+dle this limitation, well-known 3D convolution [4] or its
+(2+1)D variants [42, 49] are potential candidates to cap-
+ture short-term temporal information to identify body tra-
+jectories. Other temporal methods like temporal shift [30]
+or temporal convolutions [31] can also attend to short-term
+temporal movements. However, it’s hard for them to aggre-
+gate beneficial information from distant informative spatial
+regions due to their limited spatial-temporal receptive field.
+This CVPR paper is the Open Access version, provided by the Computer Vision Foundation.
+Except for this watermark, it is identical to the accepted version;
+the final published version of the proceedings is available on IEEE Xplore.
+2529
+Besides, as their structures are fixed for each sample dur-
+ing inference, they may fail to dynamically deal with dif-
+ferent samples to identify informative regions. To tackle
+these problems, we propose to explicitly compute correla-
+tion maps between adjacent frames to capture body trajec-
+tories, referred to as CorrNet. As shown in fig. 1, our ap-
+proach dynamically attends to informative regions in adja-
+cent left/right frames to capture body trajectories, without
+relying on extra supervision.
+In specific, our CorrNet first employs a correlation mod-
+ule to compute correlation maps between the current frame
+and its adjacent frames to identify trajectories of all spa-
+tial patches. An identification module is then presented
+to dynamically identify and emphasize the body trajecto-
+ries embodied within these correlation maps. This proce-
+dure doesn’t rely on extra expensive supervision like body
+keypoints [53] or heatmaps [54], which could be end-to-
+end trained in a lightweight way. The resulting features
+are thus able to gain an overview of local temporal move-
+ments to identify a sign. Remarkably, CorrNet achieves new
+state-of-the-art accuracy on four large-scale datasets, i.e.,
+PHOENIX14 [26], PHOENIX14-T [2], CSL-Daily [52],
+and CSL [23], thanks to its special attention on body tra-
+jectories. A comprehensive comparison with other spatial-
+temporal reasoning methods demonstrates the superiority
+of our method. Visualizations hopefully verify the effects
+of CorrNet on emphasizing human body trajectories across
+adjacent frames.
+2. Related Work
+2.1. Continuous Sign Language Recognition
+Sign language recognition methods can be roughly cate-
+gorized into isolated sign language recognition [18, 19, 43]
+and continuous sign language recognition [5, 6, 33, 34, 37]
+(CSLR), and we focus on the latter in this paper. CSLR
+tries to translate image frames into corresponding glosses
+in a weakly-supervised way: only sentence-level label is
+provided. Earlier methods [12,13] in CSLR always employ
+hand-crafted features or HMM-based systems [15, 26–28]
+to perform temporal modeling and translate sentences step
+by step. HMM-based systems first employ a feature extrac-
+tor to capture visual features and then adopt an HMM to
+perform long-term temporal modeling.
+The recent success of convolutional neural networks
+(CNNs) and recurrent neural networks (RNNs) brings huge
+progress for CSLR. The widely used CTC loss [14] in re-
+cent CSLR methods [5, 6, 33, 34, 36, 37] enables training
+deep networks in an end-to-end manner by sequentially
+aligning target sentences with input frames. These CTC-
+based methods first rely on a feature extractor, i.e., 3D or
+2D&1D CNN hybrids, to extract frame-wise features, and
+then adopt a LSTM for capturing long-term temporal de-pendencies. However, several methods [6,37] found in such
+conditions the feature extractor is not well-trained and then
+present an iterative training strategy to relieve this problem,
+but consume much more computations. Some recent stud-
+ies [5,16,33] try to directly enhance the feature extractor by
+adding alignment losses [16, 33] or adopt pseudo labels [5]
+in a lightweight way, alleviating the heavy computational
+burden. More recent works enhance CSLR by squeezing
+more representative temporal features [21] or dynamically
+emphasizing informative spatial regions [22].
+Our method is designed to explicitly incorporate body
+trajectories to identify a sign, especially those from hands
+and face. Some previous methods have also explicitly
+leveraged the hand and face features for better recogni-
+tion. For example, CNN-LSTM-HMM [25] employs a
+multi-stream HMM (including hands and face) to inte-
+grate multiple visual inputs to improve recognition accu-
+racy. STMC [53] first utilizes a pose-estimation network to
+estimate human body keypoints and then sends cropped ap-
+pearance regions (including hands and face) for information
+integration. More recently, C2SLR [54] leverages the pre-
+extracted pose keypoints as supervision to guide the model
+to explicitly focus on hand and face regions. Our method
+doesn’t rely on additional cues like pre-extracted body key-
+points [54] or multiple streams [25], which consume much
+more computations to leverage hand and face information.
+Instead, our model could be end-to-end trained to dynami-
+cally attend to body trajectories in a self-motivated way.
+2.2. Applications of Correlation Operation
+Correlation operation has been widely used in various
+domains, especially optical flow estimation and video ac-
+tion recognition. Rocco et al. [38] used it to estimate the ge-
+ometric transformation between two images, and Feichten-
+hofer et al. [11] applied it to capture object co-occurrences
+across time in tracking. For optical flow estimation, Deep
+matching [47] computes the correlation maps between im-
+age patches to find their dense correspondences. CNN-
+based methods like FlowNet [9] and PWC-Net [40] design a
+correlation layer to help perform multiplicative patch com-
+parisons between two feature maps. For video action recog-
+nition, Zhao et al. [51] firstly employ a correlation layer to
+compute a cost volume to estimate the motion information.
+STCNet [8] considers spatial correlations and temporal cor-
+relations, respectively, inspired by SENet [20]. MFNet [29]
+explicitly estimates the approximation of optical flow based
+on fixed motion filters. Wang et al. [44] design a learnable
+correlation filter and replace 3D convolutions with the pro-
+posed filter to capture spatial-temporal information. Differ-
+ent from these methods that explicitly or implicitly estimate
+optical flow, the correlation operator in our method is used
+in combination with other operations to identify and track
+body trajectories across frames.
+2530
+1D 
+CNN
+1D 
+CNN
+···
+1D 
+CNNClassifier
+Feature extractor (2D CNN)
+BiLSTM
+Frame -wise Features Gloss -wise FeaturesStage Stage Stage ····· ·····
+···Feature extractor (2D CNN)
+Feature extractor (2D CNN)+×𝛼𝛼1
++×𝛼𝛼2
+Stage Stage Stage ····· ·····
+Stage Stage Stage ····· ·····+ +
++ +
+×x
+[C,T,H,W]Correlation
+Module
+Identification
+Module𝑥𝑥𝑜𝑜𝑜𝑜𝑜𝑜
+[C,T,H,W]
++
++
++×𝛼𝛼3Figure 2. An overview for our CorrNet. It first employs a fea-
+ture extractor (2D CNN) to capture frame-wise features, and then
+adopts a 1D CNN and a BiLSTM to perform short-term and long-
+term temporal modeling, respectively, followed by a classifier to
+predict sentences. We place our proposed identification module
+and correlation module after each stage of the feature extractor to
+identify body trajectories across adjacent frames.
+3. Method
+3.1. Overview
+As shown in fig. 2, the backbone of CSLR models con-
+sists of a feature extractor (2D CNN2), a 1D CNN, a BiL-
+STM, and a classifier (a fully connected layer) to perform
+prediction. Given a sign language video with Tinput
+frames x={xt}T
+t=1∈ RT×3×H0×W0, a CSLR model
+aims to translate the input video into a series of glosses
+y={yi}N
+i=1to express a sentence, with Ndenoting the
+length of the label sequence. Specifically, the feature ex-
+tractor first processes input frames into frame-wise features
+v={vt}T
+t=1∈ RT×d. Then the 1D CNN and BiLSTM
+perform short-term and long-term temporal modeling based
+on these extracted visual representations, respectively. Fi-
+nally, the classifier employs widely-used CTC loss [14] to
+predict the probability of target gloss sequence p(y|x).
+The CSLR model processes input frames independently,
+failing to incorporate interactions between consecutive
+frames. We present a correlation module and an identi-
+fication module to identify body trajectories across adja-
+cent frames. Fig. 2 shows an example of a common fea-
+ture extractor consisting of multiple stages. The proposed
+two modules are placed after each stage, whose outputs are
+element-wisely multiplied and added into the original fea-
+tures via a learnable coefficient α.αcontrols the contribu-
+2Here we only consider the feature extractor based on 2D CNN, be-
+cause recent findings [1, 54] show 3D CNN can not provide as precise
+gloss boundaries as 2D CNN, and lead to lower accuracy.
+x: [T, C, H, W ]
+··· ···
+𝑥𝑥𝑡𝑡 𝑥𝑥𝑡𝑡−1 𝑥𝑥𝑡𝑡+1
+1×1×1 Conv1×1×1 Conv
+K×K
+ K×KFigure 3. Illustration for the correlation operator. It com-
+putes affinities between a feature patch p(i, j)inxtand patches
+pt+1(i′, j′)/pt−1(i′, j′)in adjacent frame xt+1/xt−1.
+tions of the proposed modules, and is initialized as zero to
+make the whole model keep its original behaviors. The cor-
+relation module computes correlation maps between con-
+secutive frames to capture trajectories of all spatial patches.
+The identification module dynamically locates and empha-
+sizes body trajectories embedded within these correlation
+maps. The outputs of correlation and identification mod-
+ules are multiplied to enhance inter-frame correlations.
+3.2. Correlation Module
+Sign language is mainly conveyed by both manual
+components (hand/arm gestures), and non-manual compo-
+nents (facial expressions, head movements, and body pos-
+tures) [10,35]. However, these informative body parts, e.g.,
+hands or face, are misaligned in adjacent frames. We pro-
+pose to compute correlation maps between adjacent frames
+to identify body trajectories.
+Each frame could be represented as a 3D tensor C×H×
+W, where Cis the number of channels and H×Wdenotes
+spatial size. Given a feature patch pt(i, j)in current frame
+xt, we compute the affinity between patch p(i, j)and an-
+other patch pt+1(i′, j′)in adjacent frame xt+1, where (i, j)
+is the spatial location of the patch. To restrict the compu-
+tation, the size of the feature patch could be reduced to a
+minimum, i.e., a pixel. The affinity between p(i, j)and
+pt+1(i′, j′)is computed in a dot-product way as:
+A(i, j, i′, j′) =1
+CCX
+c=1(pc
+t(i, j)·pc
+t+1(i′, j′)).(1)
+For the spatial location (i, j)inxt,(i′, j′)is often restricted
+within a K×Kneighborhood in xt+1to relieve spatial
+misalignment. A visualization is given in fig. 3. Thus, for
+all pixels in xt, the correlation maps are a tensor of size
+H×W×K×K.Kcould be set as a smaller value to
+keep semantic consistency or as a bigger value to attend to
+distant informative regions.
+Given the correlation map between a pixel and its
+neighbors in adjacent frame xt+1, we constrain its range
+2531
+into (0,1) to measure their semantic similarity by passing
+A(i, j, i′, j′)through a sigmoid function. We further sub-
+tract 0.5 from the results, to emphasize informative regions
+with positive values, and suppress redundant areas with neg-
+ative values as:
+A′(i, j, i′, j′) = Sigmoid( A(i, j, i′, j′))−0.5 (2)
+After identifying the trajectories between adjacent
+frames, we incorporate these local temporal movements
+into the current frame xt. Specifically, for a pixel in xt,
+its trajectories are aggregated from its K×Kneighbors in
+adjacent frame xt+1, by multiplying their features with the
+corresponding affinities as :
+T(i, j) =X
+i′,j′A′(i, j, i′, j′)∗xt+1(i′, j′). (3)
+In this sense, each pixel is able to be aware of its trajecto-
+ries across consecutive frames. We aggregate bidirectional
+trajectories from both xt−1andxt+1, and attach a learnable
+coefficient βto measure the importance of bi-directions.
+Thus, eq. 3 could be updated as :
+T(i, j) =β1·X
+i′,j′A′
+t+1(i, j, i′, j′)∗xt+1(i′, j′)+
+β2·X
+i′,j′A′
+t−1(i, j, i′, j′)∗xt−1(i′, j′)(4)
+where β1andβ1are initialized as 0.5. This correlation cal-
+culation is repeated for each frame in a video to track body
+trajectories in videos.
+3.3. Identification Module
+The correlation module computes correlation maps be-
+tween each pixel with its K×Kneighbors in adjacent
+frames xt−1andxt+1. However, as not all regions are criti-
+cal for expressing a sign, only those informative regions car-
+rying body trajectories should be emphasized in the current
+frame xt. The trajectories of background or noise should be
+suppressed. We present an identification module to dynam-
+ically emphasize these informative spatial regions. Specif-
+ically, as informative regions like hand and face are mis-
+aligned in adjacent frames, the identification module lever-
+ages the closely correlated local spatial-temporal features
+to tackle the misalignment issue and locate informative re-
+gions.
+As shown in fig. 4, the identification module first projects
+input features x∈ RT×C×H×Wintoxr∈ RT×C/r×H×W
+with a 1×1×1convolution to decrease the computations,
+by a channel reduction factor ras 16 by default.
+As the informative regions, e.g., hands and face, are
+not exactly aligned in adjacent frames, it’s necessary to
+consider a large spatial-temporal neighborhood to identify
+1×1×1x: [T, C, H, W ]
+𝑥𝑥𝑟𝑟: [T, C/r, H, W ]
+𝐾𝐾t×𝐾𝐾𝑠𝑠×𝐾𝐾𝑠𝑠
+Dilation=(1,1,1)
+Groups=𝐶𝐶 /𝑟𝑟𝐾𝐾t×𝐾𝐾𝑠𝑠×𝐾𝐾𝑠𝑠
+Dilation=(1,2,2)
+Groups=𝐶𝐶 /𝑟𝑟···𝐾𝐾t×𝐾𝐾𝑠𝑠×𝐾𝐾𝑠𝑠
+Dilation=(1, 𝑁𝑁𝑠𝑠,𝑁𝑁𝑠𝑠)
+Groups=𝐶𝐶 /𝑟𝑟
+×𝜎𝜎1 ×𝜎𝜎2 ×𝜎𝜎𝑑𝑑
++
+1×1×1𝑥𝑥𝑚𝑚:[T, C/r, H, W ]
+Sigmoid
+− 0.5Convolution
+Activation 
+function
+Constant
+Math operator𝑁𝑁𝑡𝑡×𝑁𝑁𝑠𝑠branchs
+𝑀𝑀:[T, C, H, W ]··· ··· ···
+𝐾𝐾t×𝐾𝐾𝑠𝑠×𝐾𝐾𝑠𝑠
+Dilation=(𝑁𝑁 𝑡𝑡,1,1)
+Groups=𝐶𝐶 /𝑟𝑟𝐾𝐾t×𝐾𝐾𝑠𝑠×𝐾𝐾𝑠𝑠
+Dilation=(𝑁𝑁 𝑡𝑡,2,2)
+Groups=𝐶𝐶 /𝑟𝑟···𝐾𝐾t×𝐾𝐾𝑠𝑠×𝐾𝐾𝑠𝑠
+Dilation=(𝑁𝑁 𝑡𝑡,𝑁𝑁𝑠𝑠,𝑁𝑁𝑠𝑠)
+Groups=𝐶𝐶 /𝑟𝑟
++×𝜎𝜎
+[T, C, H, W ]Figure 4. Illustration for our identification module.
+these features. Instead of directly employing a large 3D
+spatial-temporal kernel, we present a multi-scale paradigm
+by decomposing it into parallel branches of progressive di-
+lation rates to reduce required computations and increase
+the model capacity.
+Specifically, as shown in fig. 4, with a same small base
+convolution kernel of Kt×Ks×Ks, we employ multiple
+convolutions with their dilation rates increasing along spa-
+tial and temporal dimensions concurrently. The spatial and
+temporal dilation rate range within (1, Ns) and (1, Nt), re-
+spectively, resulting in total Ns×Ntbranches. Group con-
+volutions are employed for each branch to reduce parame-
+ters and computations. Features from different branches are
+multiplied with learnable coefficients {σ1, . . . , σ Ns×Nt}to
+control their importance, and then added to mix information
+from branches of various spatial-temporal receptive fields
+as:
+xm=NsX
+i=1NtX
+j=1σi,j·Conv i,j(xr) (5)
+where the group-wise convolution Conv i,jof different
+branches receives features of different spatial-temporal
+neighborhoods, with dilation rate (j, i, i).
+After receiving features from a large spatial-temporal
+neighborhood, xmis sent into a 1×1×1convolu-
+tion to project its channels back into C. It then passes
+through a sigmoid function to generate attention maps M∈
+RT×C×H×Wwith its values ranging within (0,1). Spe-
+2532
+cially, Mis further subtracted from a constant value of 0.5
+to emphasize informative regions with positive values, and
+suppress redundant areas with negative values as:
+M= Sigmoid(Conv 1×1×1(xm))−0.5. (6)
+Given the attention maps Mto identify informative re-
+gions, it’s multiplied with the aggregated trajectories T(x)
+by the correlation module to emphasize body trajectories
+and suppress others like background or noise. This refined
+trajectory information is finally incorporated into original
+spatial features xvia a residual connection as:
+xout=x+αT(x)·M. (7)
+As stated before, αis initialized as zero to keep the original
+spatial features.
+4. Experiments
+4.1. Experimental Setup
+4.1.1 Datasets.
+PHOENIX14 [26] is recorded from a German weather
+forecast broadcast with nine actors before a clean back-
+ground with a resolution of 210 ×260. It contains 6841
+sentences with a vocabulary of 1295 signs, divided into
+5672 training samples, 540 development (Dev) samples and
+629 testing (Test) samples.
+PHOENIX14-T [2] is available for both CSLR and sign
+language translation tasks. It contains 8247 sentences with a
+vocabulary of 1085 signs, split into 7096 training instances,
+519 development (Dev) instances and 642 testing (Test) in-
+stances.
+CSL-Daily [52] revolves the daily life, recorded indoor
+at 30fps by 10 signers. It contains 20654 sentences, divided
+into 18401 training samples, 1077 development (Dev) sam-
+ples and 1176 testing (Test) samples.
+CSL [23] is collected in the laboratory environment by
+fifty signers with a vocabulary size of 178 with 100 sen-
+tences. It contains 25000 videos, divided into training and
+testing sets by a ratio of 8:2.
+4.1.2 Training details.
+For fair comparisons, we follow the same setting as state-
+of-the-art methods [33, 54] to prepare our model. We adopt
+ResNet18 [17] as the 2D CNN backbone with ImageNet [7]
+pretrained weights. The 1D CNN of state-of-the-art meth-
+ods is set as a sequence of {K5, P2, K5, P2 }layers where
+Kσand P σdenotes a 1D convolutional layer and a pool-
+ing layer with kernel size of σ, respectively. A two-layer
+BiLSTM with hidden size 1024 is attached for long-term
+temporal modeling, followed by a fully connected layer for
+sentence prediction. We train our models for 40 epochs withConfigurations Dev(%) Test(%)
+- 20.2 21.0
+Nt=4,Ns=1 19.6 20.1
+Nt=4,Ns=2 19.2 19.8
+Nt=4,Ns=3 18.8 19.4
+Nt=4,Ns=4 19.1 19.7
+Nt=2,Ns=3 19.4 19.9
+Nt=3,Ns=3 19.1 19.7
+Nt=4,Ns=3 18.8 19.4
+Nt=5,Ns=3 19.3 19.8
+Kt=9,Ks=7 19.9 20.4
+Table 1. Ablations for the multi-scale architecture of identification
+module on the PHOENIX14 dataset.
+initial learning rate 0.001 which is divided by 5 at epoch 20
+and 30. Adam [24] optimizer is adopted as default with
+weight decay 0.001 and batch size 2. All input frames
+are first resized to 256 ×256, and then randomly cropped
+to 224×224 with 50% horizontal flipping and 20% tempo-
+ral rescaling during training. During inference, a 224 ×224
+center crop is simply adopted. Following V AC [33], we em-
+ploy the VE loss and V A loss for visual supervision, with
+weights 1.0 and 25.0, respectively. Our model is trained
+and evaluated upon a 3090 graphical card.
+4.1.3 Evaluation Metric.
+We use Word Error Rate (WER) as the evaluation met-
+ric, which is defined as the minimal summation of the
+substitution, insertion, and deletion operations to convert
+the predicted sentence to the reference sentence, as:
+WER =#sub + #ins + #del
+#reference. (8)
+Note that the lower WER, the better accuracy.
+4.2. Ablation Study
+We report ablative results on both development (Dev)
+and testing (Test) sets of PHOENIX14 dataset.
+Study on the multi-scale architecture of identification
+module. In tab. 1, without identification module, our base-
+line achieves 20.2% and 21.0% WER on the Dev and Test
+Set, respectively. The base kernel size is set as 3×3×3for
+Kt×Ks×Ks. When fixing Nt=4 and varying spatial di-
+lation rates to expand spatial receptive fields, it’s observed
+a larger Nsconsistently brings better accuracy. When Ns
+reaches 3, it brings no more accuracy gain. We set Nsas
+3 by default and test the effects of Nt. One can see that ei-
+ther increasing Ktto 5 or decreasing Ktto 2 and 3 achieves
+worse accuracy. We thus adopt Ntas 4 by default. We also
+compare our proposed multi-scale architecture with a nor-
+mal implementation of more parameters. The receptive field
+2533
+Configurations Dev(%) Test(%)
+- 20.2 21.0
+K=3 19.6 20.4
+K=5 19.4 20.2
+K=7 19.2 20.0
+K=9 19.1 19.8
+K=HorW(Full image) 18.8 19.4
+Table 2. Ablations for the articulated area of correlation module
+on the PHOENIX14 dataset.
+Correlation Identification Dev(%) Test(%)
+✘ ✘ 20.2 21.0
+! ✘ 19.5 20.0
+✘! 19.4 19.9
+! ! 18.8 19.4
+Table 3. Ablations for the effectiveness of correlation module and
+identification module on the PHOENIX14 dataset.
+of the identification module with Nt=4,Ns=3 is identical
+to a normal convolution with Kt=9 and Ks=7. As shown
+in the bottom of tab. 1, although a normal convolution owns
+more parameters and computations than our proposed archi-
+tecture, it still performs worse, verifying the effectiveness of
+our architecture.
+Study on the neighborhood Kof correlation module.
+In tab. 2, when Kis null, the correlation module is dis-
+abled. It’s observed that a larger K, i.e., more incorporated
+spatial-temporal neighbors, consistently brings better accu-
+racy. The performance reaches the peak when Kequals
+HorW, i.e., the full image is incorporated. In this case,
+distant informative objects could be interacted to provide
+discriminative information. We set K=HorWby default.
+Effectiveness of two proposed modules. In tab. 3, we
+first notice that either only using the correlation module or
+identification module could already bring a notable accu-
+racy boost, with 19.5% & 20.0% and 19.4% & 19.9% ac-
+curacy on the Dev and Test Sets, respectively. When com-
+bining both modules, the effectiveness is further activated
+with 18.8% & 19.4% accuracy on the Dev and Test Sets,
+respectively, which is adopted as the default setting.
+Effects of locations for CorrNet. Tab 4 ablates the loca-
+tions of our proposed modules, which are placed after Stage
+2, 3 or 4. It’s observed that choosing any one of these lo-
+cations could bring a notable accuracy boost, with 19.6%
+& 20.1%, 19.5% & 20.2% and 19.4% & 20.0% accuracy
+boost. When combining two or more locations, a larger ac-
+curacy gain is witnessed. The accuracy reaches the peak
+when proposed modules are placed after Stage 2, 3 and 4,
+with 18.8% & 19.4% accuracy, which is adopted by default.
+Generalizability of CorrNet. We deploy CorrNet uponStage 2 Stage 3 Stage 4 Dev(%) Test(%)
+✘ ✘ ✘ 20.2 21.0
+! ✘ ✘ 19.6 20.1
+✘! ✘ 19.5 20.2
+✘ ✘! 19.4 20.0
+! ! ✘ 19.2 19.9
+! ! ! 18.8 19.4
+Table 4. Ablations for the locations of CorrNet on the
+PHOENIX14 dataset.
+Configurations Dev(%) Test(%)
+SqueezeNet [20] 22.2 22.6
+w/ CorrNet 20.2 20.4
+ShuffleNet V2 [32] 21.7 22.2
+w/ CorrNet 19.7 20.2
+GoogleNet [41] 21.4 21.5
+w/ CorrNet 19.6 19.8
+Table 5. Ablations for the generalizability of CorrNet over multi-
+ple backbones on the PHOENIX14 dataset.
+Methods Dev(%) Test(%)
+- 20.2 21.0
+w/ SENet [20] 19.8 20.4
+w/ CBAM [48] 19.7 20.2
+w/ NLNet [46] - -
+I3D [4] 22.6 22.9
+R(2+1)D [42] 22.4 22.3
+TSM [30] 19.9 20.5
+CorrNet 18.8 19.4
+Table 6. Comparison with other methods of spatial-temporal at-
+tention or temporal reasoning on the PHOENIX14 dataset.
+multiple backbones, including SqueezeNet [20], ShuffleNet
+V2 [32] and GoogLeNet [41] to validate its generalizability
+in tab. 5. The proposed modules are placed after three spa-
+tial downsampling layers in SqueezeNet, ShuffleNet V2 and
+GoogLeNet, respectively. It’s observed that our proposed
+model generalizes well upon different backbones, bringing
++2.0% & +2.2%, +2.0% & +2.0% and +1.8% & +1.7% ac-
+curacy boost on the Dev and Test Sets, respectively.
+Comparisons with other spatial-temporal reasoning
+methods. Tab. 6 compares our approach with other meth-
+ods of spatial-temporal reasoning ability. SENet [20] and
+CBAM [48] perform channel attention to emphasize key
+information. NLNet [46] employs non-local means to ag-
+gregate spatial-temporal information from other frames.
+I3D [4] and R(2+1)D [42] deploys 3D or 2D+1D con-
+volutions to capture spatial-temporal features. TSM [30]
+adopts temporal shift operation to obtain features from ad-
+2534
+Reference Point
+Reference Point
+Reference Point
+Reference Point
+Left Right Left RightFigure 5. Visualizations of correlation maps for correlation module. Based on correlation operators, each frame could especially attend to
+informative regions in adjacent left/right frames like hands and face (dark red areas).
+Methods Dev(%) Test(%)
+CNN+HMM+LSTM [25] 26.0 26.0
+DNF [6] 23.1 22.9
+STMC [53] 21.1 20.7
+C2SLR [54] 20.5 20.4
+CorrNet 18.8 19.4
+Table 7. Comparison with other methods that explicitly exploit
+hand and face features on the PHOENIX14 dataset.
+jacent frames. In the upper part of tab. 6, one can see
+CorrNet largely outperforms other attention-based methods,
+i.e., SENet, CBAM and NLNet, for its superior ability to
+identify and aggregate body trajectories. NLNet is out of
+memory due to its quadratic computational complexity with
+spatial-temporal size. In the bottom part of tab. 6, it’s ob-
+served that I3D and R(2+1)D even degrade accuracy, which
+may be attributed to their limited spatial-temporal recep-
+tive fields and increased training complexity. TSM slightly
+brings 0.3% & 0.3% accuracy boost. Our proposed ap-
+proach surpasses these methods greatly, verifying its effec-
+tiveness in aggregating beneficial spatial-temporal informa-
+tion, from even distant spatial neighbors.
+Comparisons with previous methods equipped with
+hand or face features. Many previous CSLR methods ex-
+plicitly leverage hand and face features for better recog-
+nition, like multiple input streams [25], human body key-
+points [53, 54] and pre-extracted hand patches [6]. They
+require extra expensive pose-estimation networks like HR-
+Net [45] or additional training stages. Our approach doesn’t
+rely on extra supervision and could be end-to-end trained to
+dynamically attend to body trajectories like hand and face
+in a self-motivated way. Tab. 7 shows that our method out-
+performs these methods by a large margin.
+Raw
+RawHeatmap
+HeatmapFigure 6. Visualizations of heatmaps by Grad-CAM [39]. Top:
+raw frames; Bottom: heatmaps of our identification module. Our
+identification module could generally focus on the human body
+(light yellow areas) and especially pays attention to informative
+regions like hands and face (dark red areas) to track body trajecto-
+ries.
+4.3. Visualizations
+Visualizations for correlation module. Fig. 5 shows
+the correlation maps generated by our correlation mod-
+ule with adjacent frames. It’s observed that the reference
+point could well attend to informative regions in adjacent
+left/right frame, e.g., hands or face, to track body trajecto-
+ries in expressing a sign. Especially, they always focus on
+the moving body parts that play a major role in expressing
+signs. For example, the reference point (left hand) in the up-
+2535
+Methods BackbonePHOENIX14 PHOENIX14-T
+Dev(%) Test(%)Dev(%) Test(%)del/ins WER del/ins WER
+SFL [34] ResNet18 7.9/6.5 26.2 7.5/6.3 26.8 25.1 26.1
+FCN [5] Custom - 23.7 - 23.9 23.3 25.1
+CMA [36] GoogLeNet 7.3/2.7 21.3 7.3/2.4 21.9 - -
+V AC [33] ResNet18 7.9/2.5 21.2 8.4/2.6 22.3 - -
+SMKD [16] ResNet18 6.8/2.5 20.8 6.3/2.3 21.0 20.8 22.4
+TLP [21] ResNet18 6.3/2.8 19.7 6.1/2.9 20.8 19.4 21.2
+SEN [22] ResNet18 5.8/2.6 19.5 7.3/4.0 21.0 19.3 20.7
+SLT∗[2] GoogLeNet - - - - 24.5 24.6
+CNN+LSTM+HMM∗[25] GoogLeNet - 26.0 - 26.0 22.1 24.1
+DNF∗[6] GoogLeNet 7.3/3.3 23.1 6.7/3.3 22.9 - -
+STMC∗[53] VGG11 7.7/3.4 21.1 7.4/2.6 20.7 19.6 21.0
+C2SLR∗[54] ResNet18 - 20.5 - 20.4 20.2 20.4
+CorrNet ResNet18 5.6/2.8 18.8 5.7/2.3 19.4 18.9 20.5
+Table 8. Comparison with state-of-the-art methods on the PHOENIX14 and PHOENIX14-T datasets. ∗indicates extra clues such as face
+or hand features are included by additional networks or pre-extracted heatmaps.
+per left figure specially attends to the quickly moving right
+hand to capture sign information.
+Visualizations for identification module. Fig. 6 shows
+the heatmaps generated by our identification module. Our
+identification module could generally focus on the human
+body (light yellow areas). Especially, it pays major atten-
+tion to regions like hands and face (dark red areas). These
+results show that our identification module could dynami-
+cally emphasize important areas in expressing a sign, e.g.,
+hands and face, and suppress other regions.
+4.4. Comparison with State-of-the-Art Methods
+PHOENIX14 and PHOENIX14-T . Tab. 8 shows a
+comprehensive comparison between our CorrNet and other
+state-of-the-art methods. The entries notated with ∗indi-
+cate these methods utilize additional factors like face or
+hand features for better accuracy. We notice that CorrNet
+outperforms other state-of-the-art methods by a large mar-
+gin upon both datasets, thanks to its special attention on
+body trajectories. Especially, CorrNet outperforms previous
+CSLR methods equipped with hand and faces acquired by
+heavy pose-estimation networks or pre-extracted heatmaps
+(notated with *), without additional expensive supervision.
+CSL-Daily . CSL-Daily is a recently released large-
+scale dataset with the largest vocabulary size (2k) among
+commonly-used CSLR datasets, with a wide content cover-
+ing family life, social contact and so on. Tab. 9 shows that
+our CorrNet achieves new state-of-the-art accuracy upon
+this challenging dataset with notable progress, which gen-
+eralizes well upon real-world scenarios.
+CSL . As shown in tab. 10, our CorrNet could achieve
+extremely superior accuracy (0.8% WER) upon this well-
+examined dataset, outperforming existing CSLR methods.Methods Dev(%) Test(%)
+LS-HAN [23] 39.0 39.4
+TIN-Iterative [6] 32.8 32.4
+Joint-SLRT [3] 33.1 32.0
+FCN [5] 33.2 32.5
+BN-TIN [52] 33.6 33.1
+CorrNet 30.6 30.1
+Table 9. Comparison with other methods on the CSL-Daily
+dataset [52].
+Methods WER(%)
+SF-Net [50] 3.8
+FCN [5] 3.0
+STMC [53] 2.1
+V AC [33] 1.6
+C2SLR [54] 0.9
+CorrNet 0.8
+Table 10. Comparison with other methods on the CSL dataset [23].
+5. Conclusion
+This paper introduces a correlation module to capture
+trajectories between adjacent frames and an identification
+module to locate body regions. Comparisons with previous
+CSLR methods with spatial-temporal reasoning or hand and
+face features demonstrate the superiority of CorrNet. Visu-
+alizations show that CorrNet could generally attend to hand
+and face regions to capture body trajectories.
+Acknowledgments.
+The work is supported by the National Natural Science
+Foundation of China (Project No. 62072334).
+2536
+References
+[1] Nikolas Adaloglou, Theocharis Chatzis, Ilias Papastratis,
+Andreas Stergioulas, Georgios Th Papadopoulos, Vassia
+Zacharopoulou, George J Xydopoulos, Klimnis Atzakas,
+Dimitris Papazachariou, and Petros Daras. A comprehen-
+sive study on deep learning-based methods for sign language
+recognition. IEEE Transactions on Multimedia , 24:1750–
+1762, 2021. 3
+[2] Necati Cihan Camgoz, Simon Hadfield, Oscar Koller, Her-
+mann Ney, and Richard Bowden. Neural sign language trans-
+lation. In Proceedings of the IEEE Conference on Computer
+Vision and Pattern Recognition , pages 7784–7793, 2018. 2,
+5, 8
+[3] Necati Cihan Camgoz, Oscar Koller, Simon Hadfield, and
+Richard Bowden. Sign language transformers: Joint end-to-
+end sign language recognition and translation. In Proceed-
+ings of the IEEE/CVF conference on computer vision and
+pattern recognition , pages 10023–10033, 2020. 8
+[4] Joao Carreira and Andrew Zisserman. Quo vadis, action
+recognition? a new model and the kinetics dataset. In pro-
+ceedings of the IEEE Conference on Computer Vision and
+Pattern Recognition , pages 6299–6308, 2017. 1, 6
+[5] Ka Leong Cheng, Zhaoyang Yang, Qifeng Chen, and Yu-
+Wing Tai. Fully convolutional networks for continuous sign
+language recognition. In ECCV , 2020. 1, 2, 8
+[6] Runpeng Cui, Hu Liu, and Changshui Zhang. A deep neu-
+ral framework for continuous sign language recognition by
+iterative training. TMM , 21(7):1880–1891, 2019. 1, 2, 7, 8
+[7] Jia Deng, Wei Dong, Richard Socher, Li-Jia Li, Kai Li,
+and Li Fei-Fei. Imagenet: A large-scale hierarchical image
+database. In 2009 IEEE conference on computer vision and
+pattern recognition , pages 248–255. Ieee, 2009. 5
+[8] Ali Diba, Mohsen Fayyaz, Vivek Sharma, M Mahdi Arzani,
+Rahman Yousefzadeh, Juergen Gall, and Luc Van Gool.
+Spatio-temporal channel correlation networks for action
+classification. In Proceedings of the European Conference
+on Computer Vision (ECCV) , pages 284–299, 2018. 2
+[9] Alexey Dosovitskiy, Philipp Fischer, Eddy Ilg, Philip
+Hausser, Caner Hazirbas, Vladimir Golkov, Patrick Van
+Der Smagt, Daniel Cremers, and Thomas Brox. Flownet:
+Learning optical flow with convolutional networks. In Pro-
+ceedings of the IEEE international conference on computer
+vision , pages 2758–2766, 2015. 2
+[10] Philippe Dreuw, David Rybach, Thomas Deselaers, Morteza
+Zahedi, and Hermann Ney. Speech recognition techniques
+for a sign language recognition system. hand , 60:80, 2007.
+1, 3
+[11] Christoph Feichtenhofer, Axel Pinz, and Andrew Zisserman.
+Detect to track and track to detect. In Proceedings of the
+IEEE international conference on computer vision , pages
+3038–3046, 2017. 2
+[12] William T Freeman and Michal Roth. Orientation his-
+tograms for hand gesture recognition. In International work-
+shop on automatic face and gesture recognition , volume 12,
+pages 296–301. Zurich, Switzerland, 1995. 2
+[13] Wen Gao, Gaolin Fang, Debin Zhao, and Yiqiang Chen.
+A chinese sign language recognition system based onsofm/srn/hmm. Pattern Recognition , 37(12):2389–2402,
+2004. 2
+[14] Alex Graves, Santiago Fern ´andez, Faustino Gomez, and
+J¨urgen Schmidhuber. Connectionist temporal classification:
+labelling unsegmented sequence data with recurrent neural
+networks. In Proceedings of the 23rd international confer-
+ence on Machine learning , pages 369–376, 2006. 2, 3
+[15] Junwei Han, George Awad, and Alistair Sutherland. Mod-
+elling and segmenting subunits for sign language recognition
+based on hand motion analysis. Pattern Recognition Letters ,
+30(6):623–633, 2009. 2
+[16] Aiming Hao, Yuecong Min, and Xilin Chen. Self-mutual dis-
+tillation learning for continuous sign language recognition.
+InProceedings of the IEEE/CVF International Conference
+on Computer Vision , pages 11303–11312, 2021. 1, 2, 8
+[17] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun.
+Deep residual learning for image recognition. In Proceed-
+ings of the IEEE conference on computer vision and pattern
+recognition , pages 770–778, 2016. 5
+[18] Hezhen Hu, Weichao Zhao, Wengang Zhou, Yuechen Wang,
+and Houqiang Li. Signbert: Pre-training of hand-model-
+aware representation for sign language recognition. In
+Proceedings of the IEEE/CVF International Conference on
+Computer Vision , pages 11087–11096, 2021. 2
+[19] Hezhen Hu, Wengang Zhou, and Houqiang Li. Hand-model-
+aware sign language recognition. In Proceedings of the
+AAAI Conference on Artificial Intelligence , volume 35, pages
+1558–1566, 2021. 2
+[20] Jie Hu, Li Shen, and Gang Sun. Squeeze-and-excitation net-
+works. In Proceedings of the IEEE conference on computer
+vision and pattern recognition , pages 7132–7141, 2018. 2, 6
+[21] Lianyu Hu, Liqing Gao, Zekang Liu, and Wei Feng. Tem-
+poral lift pooling for continuous sign language recognition.
+InComputer Vision–ECCV 2022: 17th European Confer-
+ence, Tel Aviv, Israel, October 23–27, 2022, Proceedings,
+Part XXXV , pages 511–527. Springer, 2022. 2, 8
+[22] Lianyu Hu, Liqing Gao, Zekang Liu, and Wei Feng. Self-
+emphasizing network for continuous sign language recogni-
+tion. In Thirty-seventh AAAI conference on artificial intelli-
+gence , 2023. 2, 8
+[23] Jie Huang, Wengang Zhou, Qilin Zhang, Houqiang Li, and
+Weiping Li. Video-based sign language recognition without
+temporal segmentation. In Proceedings of the AAAI Confer-
+ence on Artificial Intelligence , volume 32, 2018. 2, 5, 8
+[24] Diederik P Kingma and Jimmy Ba. Adam: A method for
+stochastic optimization. arXiv preprint arXiv:1412.6980 ,
+2014. 5
+[25] Oscar Koller, Necati Cihan Camgoz, Hermann Ney, and
+Richard Bowden. Weakly supervised learning with multi-
+stream cnn-lstm-hmms to discover sequential parallelism in
+sign language videos. PAMI , 42(9):2306–2320, 2019. 2, 7, 8
+[26] Oscar Koller, Jens Forster, and Hermann Ney. Continuous
+sign language recognition: Towards large vocabulary statisti-
+cal recognition systems handling multiple signers. Computer
+Vision and Image Understanding , 141:108–125, 2015. 2, 5
+[27] Oscar Koller, O Zargaran, Hermann Ney, and Richard Bow-
+den. Deep sign: Hybrid cnn-hmm for continuous sign lan-
+2537
+guage recognition. In Proceedings of the British Machine
+Vision Conference 2016 , 2016. 2
+[28] Oscar Koller, Sepehr Zargaran, and Hermann Ney. Re-sign:
+Re-aligned end-to-end sequence modelling with deep recur-
+rent cnn-hmms. In CVPR , 2017. 2
+[29] Myunggi Lee, Seungeui Lee, Sungjoon Son, Gyutae Park,
+and Nojun Kwak. Motion feature network: Fixed motion
+filter for action recognition. In Proceedings of the Euro-
+pean Conference on Computer Vision (ECCV) , pages 387–
+403, 2018. 2
+[30] Ji Lin, Chuang Gan, and Song Han. Tsm: Temporal shift
+module for efficient video understanding. In Proceedings
+of the IEEE International Conference on Computer Vision ,
+pages 7083–7093, 2019. 1, 6
+[31] Zhaoyang Liu, Donghao Luo, Yabiao Wang, Limin Wang,
+Ying Tai, Chengjie Wang, Jilin Li, Feiyue Huang, and Tong
+Lu. Teinet: Towards an efficient architecture for video recog-
+nition. In Proceedings of the AAAI Conference on Artificial
+Intelligence , volume 34, pages 11669–11676, 2020. 1
+[32] Ningning Ma, Xiangyu Zhang, Hai-Tao Zheng, and Jian Sun.
+Shufflenet v2: Practical guidelines for efficient cnn architec-
+ture design. In Proceedings of the European conference on
+computer vision (ECCV) , pages 116–131, 2018. 6
+[33] Yuecong Min, Aiming Hao, Xiujuan Chai, and Xilin Chen.
+Visual alignment constraint for continuous sign language
+recognition. In ICCV , 2021. 1, 2, 5, 8
+[34] Zhe Niu and Brian Mak. Stochastic fine-grained labeling of
+multi-state sign glosses for continuous sign language recog-
+nition. In ECCV , 2020. 1, 2, 8
+[35] Sylvie CW Ong and Surendra Ranganath. Automatic sign
+language analysis: A survey and the future beyond lexical
+meaning. IEEE Transactions on Pattern Analysis & Machine
+Intelligence , 27(06):873–891, 2005. 1, 3
+[36] Junfu Pu, Wengang Zhou, Hezhen Hu, and Houqiang Li.
+Boosting continuous sign language recognition via cross
+modality augmentation. In ACM MM , 2020. 1, 2, 8
+[37] Junfu Pu, Wengang Zhou, and Houqiang Li. Iterative align-
+ment network for continuous sign language recognition. In
+CVPR , 2019. 2
+[38] Ignacio Rocco, Relja Arandjelovic, and Josef Sivic. Convo-
+lutional neural network architecture for geometric matching.
+InProceedings of the IEEE conference on computer vision
+and pattern recognition , pages 6148–6157, 2017. 2
+[39] Ramprasaath R Selvaraju, Michael Cogswell, Abhishek Das,
+Ramakrishna Vedantam, Devi Parikh, and Dhruv Batra.
+Grad-cam: Visual explanations from deep networks via
+gradient-based localization. In Proceedings of the IEEE in-
+ternational conference on computer vision , pages 618–626,
+2017. 1, 7
+[40] Deqing Sun, Xiaodong Yang, Ming-Yu Liu, and Jan Kautz.
+Pwc-net: Cnns for optical flow using pyramid, warping, and
+cost volume. In Proceedings of the IEEE conference on
+computer vision and pattern recognition , pages 8934–8943,
+2018. 2
+[41] Christian Szegedy, Wei Liu, Yangqing Jia, Pierre Sermanet,
+Scott Reed, Dragomir Anguelov, Dumitru Erhan, Vincent
+Vanhoucke, and Andrew Rabinovich. Going deeper withconvolutions. In Proceedings of the IEEE conference on
+computer vision and pattern recognition , pages 1–9, 2015.
+6
+[42] Du Tran, Heng Wang, Lorenzo Torresani, Jamie Ray, Yann
+LeCun, and Manohar Paluri. A closer look at spatiotemporal
+convolutions for action recognition. In Proceedings of the
+IEEE conference on Computer Vision and Pattern Recogni-
+tion, pages 6450–6459, 2018. 1, 6
+[43] Anirudh Tunga, Sai Vidyaranya Nuthalapati, and Juan
+Wachs. Pose-based sign language recognition using gcn and
+bert. In Proceedings of the IEEE/CVF Winter Conference on
+Applications of Computer Vision , pages 31–40, 2021. 2
+[44] Heng Wang, Du Tran, Lorenzo Torresani, and Matt Feiszli.
+Video modeling with correlation networks. In Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition , pages 352–361, 2020. 1, 2
+[45] Jingdong Wang, Ke Sun, Tianheng Cheng, Borui Jiang,
+Chaorui Deng, Yang Zhao, Dong Liu, Yadong Mu, Mingkui
+Tan, Xinggang Wang, et al. Deep high-resolution repre-
+sentation learning for visual recognition. IEEE transactions
+on pattern analysis and machine intelligence , 43(10):3349–
+3364, 2020. 7
+[46] Xiaolong Wang, Ross Girshick, Abhinav Gupta, and Kaim-
+ing He. Non-local neural networks. In Proceedings of the
+IEEE conference on computer vision and pattern recogni-
+tion, pages 7794–7803, 2018. 6
+[47] Philippe Weinzaepfel, Jerome Revaud, Zaid Harchaoui, and
+Cordelia Schmid. Deepflow: Large displacement optical
+flow with deep matching. In Proceedings of the IEEE inter-
+national conference on computer vision , pages 1385–1392,
+2013. 2
+[48] Sanghyun Woo, Jongchan Park, Joon-Young Lee, and In So
+Kweon. Cbam: Convolutional block attention module. In
+Proceedings of the European conference on computer vision
+(ECCV) , pages 3–19, 2018. 6
+[49] Saining Xie, Chen Sun, Jonathan Huang, Zhuowen Tu, and
+Kevin Murphy. Rethinking spatiotemporal feature learn-
+ing: Speed-accuracy trade-offs in video classification. In
+Proceedings of the European conference on computer vision
+(ECCV) , pages 305–321, 2018. 1
+[50] Zhaoyang Yang, Zhenmei Shi, Xiaoyong Shen, and Yu-
+Wing Tai. Sf-net: Structured feature network for continuous
+sign language recognition. arXiv preprint arXiv:1908.01341 ,
+2019. 8
+[51] Yue Zhao, Yuanjun Xiong, and Dahua Lin. Recognize ac-
+tions by disentangling components of dynamics. In Proceed-
+ings of the IEEE Conference on Computer Vision and Pattern
+Recognition , pages 6566–6575, 2018. 2
+[52] Hao Zhou, Wengang Zhou, Weizhen Qi, Junfu Pu, and
+Houqiang Li. Improving sign language translation with
+monolingual data by sign back-translation. In Proceedings
+of the IEEE/CVF Conference on Computer Vision and Pat-
+tern Recognition , pages 1316–1325, 2021. 2, 5, 8
+[53] Hao Zhou, Wengang Zhou, Yun Zhou, and Houqiang Li.
+Spatial-temporal multi-cue network for continuous sign lan-
+guage recognition. In AAAI , 2020. 2, 7, 8
+[54] Ronglai Zuo and Brian Mak. C2slr: Consistency-enhanced
+continuous sign language recognition. In Proceedings of
+2538
+the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition , pages 5131–5140, 2022. 1, 2, 3, 5, 7, 8
+2539

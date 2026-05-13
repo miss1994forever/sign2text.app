@@ -1,0 +1,199 @@
+//
+//  DictionaryManager.swift
+//  sign2text-app
+//
+//  Created by haojun on 2025/9/12.
+//
+
+import Foundation
+import SwiftUI
+
+// MARK: - Dictionary Manager
+
+/// Manages the sign language dictionary with simplified, safe implementation
+class DictionaryManager: ObservableObject {
+    @Published var words: [SignLanguageWord] = []
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+    @Published var isCloudSyncEnabled = false
+    @Published var isSyncing = false
+    @Published var syncError: String?
+    
+    private let userDefaults = UserDefaults.standard
+    private let wordsKey = "SavedSignLanguageWords"
+    
+    // MARK: - Initialization
+    
+    init() {
+        print("📚 Initializing DictionaryManager...")
+        loadWords()
+    }
+    
+    // MARK: - Public Methods
+    
+    /// Loads words from storage
+    func loadWords() {
+        print("📚 Loading words...")
+        isLoading = true
+        errorMessage = nil
+        
+        // Load on background queue to avoid blocking UI
+        DispatchQueue.global(qos: .background).async { [weak self] in
+            guard let self = self else { return }
+            
+            let loadedWords = self.loadWordsFromUserDefaults()
+            
+            DispatchQueue.main.async {
+                self.words = loadedWords
+                self.isLoading = false
+                
+                // Add sample words if dictionary is empty
+                if self.words.isEmpty {
+                    self.loadSampleWords()
+                }
+                
+                print("📚 Successfully loaded \(self.words.count) words")
+            }
+        }
+    }
+    
+    /// Adds a new word to the dictionary
+    func addWord(_ word: SignLanguageWord) {
+        print("📚 Adding new word: \(word.word)")
+        words.append(word)
+        saveWords()
+    }
+    
+    /// Removes a word from the dictionary
+    func removeWord(_ wordId: UUID) {
+        print("📚 Removing word with ID: \(wordId)")
+        words.removeAll { $0.id == wordId }
+        saveWords()
+    }
+    
+    /// Searches words in the dictionary
+    func searchWords(_ query: String) -> [SignLanguageWord] {
+        if query.isEmpty {
+            return words
+        }
+        return words.filter { 
+            $0.word.lowercased().contains(query.lowercased()) ||
+            ($0.description?.lowercased().contains(query.lowercased()) ?? false)
+        }
+    }
+    
+    /// Gets words by category
+    func getWords(in category: SignLanguageCategory) -> [SignLanguageWord] {
+        return words.filter { $0.category == category }
+    }
+    
+    // MARK: - Private Methods
+    
+    private func loadWordsFromUserDefaults() -> [SignLanguageWord] {
+        print("📚 Loading words from UserDefaults...")
+        
+        guard let data = userDefaults.data(forKey: wordsKey) else {
+            print("📚 No saved dictionary data found")
+            return []
+        }
+        
+        do {
+            let decoder = JSONDecoder()
+            let words = try decoder.decode([SignLanguageWord].self, from: data)
+            print("📚 Successfully decoded \(words.count) words from storage")
+            return words
+        } catch {
+            print("📚 Failed to decode words: \(error.localizedDescription)")
+            
+            // Clear corrupted data
+            userDefaults.removeObject(forKey: wordsKey)
+            
+            DispatchQueue.main.async { [weak self] in
+                self?.errorMessage = "Failed to load saved dictionary. Starting fresh."
+            }
+            return []
+        }
+    }
+    
+    private func saveWords() {
+        print("📚 Saving \(words.count) words to storage...")
+        
+        do {
+            let encoder = JSONEncoder()
+            let data = try encoder.encode(words)
+            userDefaults.set(data, forKey: wordsKey)
+            userDefaults.synchronize() // Force save
+            print("📚 Successfully saved words to UserDefaults")
+        } catch {
+            print("📚 Failed to save words: \(error.localizedDescription)")
+            DispatchQueue.main.async { [weak self] in
+                self?.errorMessage = "Failed to save dictionary changes."
+            }
+        }
+    }
+    
+    private func loadSampleWords() {
+        print("📚 Loading sample words...")
+        
+        let sampleWords: [SignLanguageWord] = [
+            SignLanguageWord(
+                word: "Hello", 
+                description: "Basic greeting", 
+                category: .greetings, 
+                addedBy: "System"
+            ),
+            SignLanguageWord(
+                word: "Thank you", 
+                description: "Expression of gratitude", 
+                category: .greetings, 
+                addedBy: "System"
+            ),
+            SignLanguageWord(
+                word: "Please", 
+                description: "Polite request", 
+                category: .greetings, 
+                addedBy: "System"
+            ),
+            SignLanguageWord(
+                word: "Sorry", 
+                description: "Apology", 
+                category: .emotions, 
+                addedBy: "System"
+            ),
+            SignLanguageWord(
+                word: "Happy", 
+                description: "Feeling of joy", 
+                category: .emotions, 
+                addedBy: "System"
+            ),
+            SignLanguageWord(
+                word: "Water", 
+                description: "H2O, liquid to drink", 
+                category: .food, 
+                addedBy: "System"
+            ),
+            SignLanguageWord(
+                word: "Food", 
+                description: "Something to eat", 
+                category: .food, 
+                addedBy: "System"
+            )
+        ]
+        
+        words = sampleWords
+        saveWords()
+        print("📚 Loaded \(sampleWords.count) sample words")
+    }
+    
+    // MARK: - Cloud Sync Methods (Simplified)
+    
+    func enableCloudSync() {
+        isCloudSyncEnabled = true
+        print("📚 Cloud sync enabled")
+    }
+    
+    func disableCloudSync() {
+        isCloudSyncEnabled = false
+        print("📚 Cloud sync disabled")
+    }
+}

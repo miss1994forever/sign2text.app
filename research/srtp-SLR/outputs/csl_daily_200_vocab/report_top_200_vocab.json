@@ -1,0 +1,2056 @@
+{
+  "split_stats": {
+    "train": {
+      "samples": 18401,
+      "tokens": 133714,
+      "types": 2000
+    },
+    "dev": {
+      "samples": 1077,
+      "tokens": 8173,
+      "types": 1344
+    },
+    "test": {
+      "samples": 1176,
+      "tokens": 9002,
+      "types": 1345
+    }
+  },
+  "evaluation": {
+    "train": {
+      "samples": 18401,
+      "exact_covered_samples": 1025,
+      "exact_sample_coverage": 0.05570349437530569,
+      "tokens": 133714,
+      "covered_tokens": 82009,
+      "token_coverage": 0.6133164814454731,
+      "types": 2000,
+      "covered_types": 200,
+      "type_coverage": 0.1
+    },
+    "dev": {
+      "samples": 1077,
+      "exact_covered_samples": 3,
+      "exact_sample_coverage": 0.002785515320334262,
+      "tokens": 8173,
+      "covered_tokens": 4852,
+      "token_coverage": 0.5936620579958399,
+      "types": 1344,
+      "covered_types": 200,
+      "type_coverage": 0.1488095238095238
+    },
+    "test": {
+      "samples": 1176,
+      "exact_covered_samples": 3,
+      "exact_sample_coverage": 0.002551020408163265,
+      "tokens": 9002,
+      "covered_tokens": 5293,
+      "token_coverage": 0.587980448789158,
+      "types": 1345,
+      "covered_types": 200,
+      "type_coverage": 0.14869888475836432
+    }
+  },
+  "top_vocab": [
+    {
+      "rank": 1,
+      "gloss": "我",
+      "train_token_count": 5180,
+      "train_sample_count": 4540,
+      "dev_token_count": 276,
+      "test_token_count": 310,
+      "all_token_count": 5766,
+      "cumulative_train_token_coverage": 0.03873939901580986
+    },
+    {
+      "rank": 2,
+      "gloss": "他",
+      "train_token_count": 3243,
+      "train_sample_count": 2923,
+      "dev_token_count": 201,
+      "test_token_count": 206,
+      "all_token_count": 3650,
+      "cumulative_train_token_coverage": 0.06299265596721361
+    },
+    {
+      "rank": 3,
+      "gloss": "你",
+      "train_token_count": 2693,
+      "train_sample_count": 2380,
+      "dev_token_count": 170,
+      "test_token_count": 185,
+      "all_token_count": 3048,
+      "cumulative_train_token_coverage": 0.08313265626635954
+    },
+    {
+      "rank": 4,
+      "gloss": "这",
+      "train_token_count": 2535,
+      "train_sample_count": 2374,
+      "dev_token_count": 152,
+      "test_token_count": 166,
+      "all_token_count": 2853,
+      "cumulative_train_token_coverage": 0.1020910301090387
+    },
+    {
+      "rank": 5,
+      "gloss": "人",
+      "train_token_count": 2331,
+      "train_sample_count": 2065,
+      "dev_token_count": 147,
+      "test_token_count": 167,
+      "all_token_count": 2645,
+      "cumulative_train_token_coverage": 0.11952375966615313
+    },
+    {
+      "rank": 6,
+      "gloss": "多",
+      "train_token_count": 1781,
+      "train_sample_count": 1636,
+      "dev_token_count": 97,
+      "test_token_count": 105,
+      "all_token_count": 1983,
+      "cumulative_train_token_coverage": 0.13284323257100977
+    },
+    {
+      "rank": 7,
+      "gloss": "不",
+      "train_token_count": 1759,
+      "train_sample_count": 1632,
+      "dev_token_count": 113,
+      "test_token_count": 127,
+      "all_token_count": 1999,
+      "cumulative_train_token_coverage": 0.1459981752097761
+    },
+    {
+      "rank": 8,
+      "gloss": "要",
+      "train_token_count": 1406,
+      "train_sample_count": 1309,
+      "dev_token_count": 79,
+      "test_token_count": 78,
+      "all_token_count": 1563,
+      "cumulative_train_token_coverage": 0.15651315494263876
+    },
+    {
+      "rank": 9,
+      "gloss": "有",
+      "train_token_count": 1375,
+      "train_sample_count": 1283,
+      "dev_token_count": 106,
+      "test_token_count": 107,
+      "all_token_count": 1588,
+      "cumulative_train_token_coverage": 0.16679629657328326
+    },
+    {
+      "rank": 10,
+      "gloss": "是",
+      "train_token_count": 1367,
+      "train_sample_count": 1297,
+      "dev_token_count": 106,
+      "test_token_count": 115,
+      "all_token_count": 1588,
+      "cumulative_train_token_coverage": 0.17701960901625857
+    },
+    {
+      "rank": 11,
+      "gloss": "1",
+      "train_token_count": 1336,
+      "train_sample_count": 1204,
+      "dev_token_count": 86,
+      "test_token_count": 86,
+      "all_token_count": 1508,
+      "cumulative_train_token_coverage": 0.18701108335701572
+    },
+    {
+      "rank": 12,
+      "gloss": "好",
+      "train_token_count": 1320,
+      "train_sample_count": 1196,
+      "dev_token_count": 100,
+      "test_token_count": 107,
+      "all_token_count": 1527,
+      "cumulative_train_token_coverage": 0.19688289932243444
+    },
+    {
+      "rank": 13,
+      "gloss": "我们",
+      "train_token_count": 1196,
+      "train_sample_count": 1163,
+      "dev_token_count": 80,
+      "test_token_count": 85,
+      "all_token_count": 1361,
+      "cumulative_train_token_coverage": 0.2058273628789805
+    },
+    {
+      "rank": 14,
+      "gloss": "没有",
+      "train_token_count": 1194,
+      "train_sample_count": 1138,
+      "dev_token_count": 54,
+      "test_token_count": 61,
+      "all_token_count": 1309,
+      "cumulative_train_token_coverage": 0.21475686913860928
+    },
+    {
+      "rank": 15,
+      "gloss": "看",
+      "train_token_count": 1111,
+      "train_sample_count": 992,
+      "dev_token_count": 69,
+      "test_token_count": 78,
+      "all_token_count": 1258,
+      "cumulative_train_token_coverage": 0.22306564757617003
+    },
+    {
+      "rank": 16,
+      "gloss": "去",
+      "train_token_count": 1103,
+      "train_sample_count": 1057,
+      "dev_token_count": 55,
+      "test_token_count": 53,
+      "all_token_count": 1211,
+      "cumulative_train_token_coverage": 0.2313145968260616
+    },
+    {
+      "rank": 17,
+      "gloss": "想",
+      "train_token_count": 1070,
+      "train_sample_count": 997,
+      "dev_token_count": 48,
+      "test_token_count": 45,
+      "all_token_count": 1163,
+      "cumulative_train_token_coverage": 0.23931675067681768
+    },
+    {
+      "rank": 18,
+      "gloss": "房子",
+      "train_token_count": 1022,
+      "train_sample_count": 978,
+      "dev_token_count": 52,
+      "test_token_count": 61,
+      "all_token_count": 1135,
+      "cumulative_train_token_coverage": 0.24695992940155856
+    },
+    {
+      "rank": 19,
+      "gloss": "什么",
+      "train_token_count": 960,
+      "train_sample_count": 907,
+      "dev_token_count": 79,
+      "test_token_count": 85,
+      "all_token_count": 1124,
+      "cumulative_train_token_coverage": 0.25413943192186306
+    },
+    {
+      "rank": 20,
+      "gloss": "不行",
+      "train_token_count": 939,
+      "train_sample_count": 885,
+      "dev_token_count": 49,
+      "test_token_count": 54,
+      "all_token_count": 1042,
+      "cumulative_train_token_coverage": 0.26116188282453595
+    },
+    {
+      "rank": 21,
+      "gloss": "自己",
+      "train_token_count": 926,
+      "train_sample_count": 858,
+      "dev_token_count": 64,
+      "test_token_count": 68,
+      "all_token_count": 1058,
+      "cumulative_train_token_coverage": 0.2680871112972464
+    },
+    {
+      "rank": 22,
+      "gloss": "工作",
+      "train_token_count": 925,
+      "train_sample_count": 855,
+      "dev_token_count": 38,
+      "test_token_count": 40,
+      "all_token_count": 1003,
+      "cumulative_train_token_coverage": 0.27500486112149813
+    },
+    {
+      "rank": 23,
+      "gloss": "可以",
+      "train_token_count": 908,
+      "train_sample_count": 869,
+      "dev_token_count": 59,
+      "test_token_count": 63,
+      "all_token_count": 1030,
+      "cumulative_train_token_coverage": 0.2817954739219528
+    },
+    {
+      "rank": 24,
+      "gloss": "吃",
+      "train_token_count": 903,
+      "train_sample_count": 709,
+      "dev_token_count": 55,
+      "test_token_count": 52,
+      "all_token_count": 1010,
+      "cumulative_train_token_coverage": 0.28854869348011425
+    },
+    {
+      "rank": 25,
+      "gloss": "今天",
+      "train_token_count": 844,
+      "train_sample_count": 830,
+      "dev_token_count": 48,
+      "test_token_count": 52,
+      "all_token_count": 944,
+      "cumulative_train_token_coverage": 0.29486067277921535
+    },
+    {
+      "rank": 26,
+      "gloss": "说",
+      "train_token_count": 809,
+      "train_sample_count": 755,
+      "dev_token_count": 39,
+      "test_token_count": 36,
+      "all_token_count": 884,
+      "cumulative_train_token_coverage": 0.3009108993822636
+    },
+    {
+      "rank": 27,
+      "gloss": "时间",
+      "train_token_count": 752,
+      "train_sample_count": 716,
+      "dev_token_count": 43,
+      "test_token_count": 46,
+      "all_token_count": 841,
+      "cumulative_train_token_coverage": 0.30653484302316886
+    },
+    {
+      "rank": 28,
+      "gloss": "钱",
+      "train_token_count": 661,
+      "train_sample_count": 596,
+      "dev_token_count": 40,
+      "test_token_count": 38,
+      "all_token_count": 739,
+      "cumulative_train_token_coverage": 0.31147822965433686
+    },
+    {
+      "rank": 29,
+      "gloss": "做",
+      "train_token_count": 650,
+      "train_sample_count": 630,
+      "dev_token_count": 45,
+      "test_token_count": 51,
+      "all_token_count": 746,
+      "cumulative_train_token_coverage": 0.3163393511524597
+    },
+    {
+      "rank": 30,
+      "gloss": "买",
+      "train_token_count": 613,
+      "train_sample_count": 561,
+      "dev_token_count": 29,
+      "test_token_count": 35,
+      "all_token_count": 677,
+      "cumulative_train_token_coverage": 0.3209237626576125
+    },
+    {
+      "rank": 31,
+      "gloss": "小",
+      "train_token_count": 606,
+      "train_sample_count": 580,
+      "dev_token_count": 34,
+      "test_token_count": 42,
+      "all_token_count": 682,
+      "cumulative_train_token_coverage": 0.32545582362355474
+    },
+    {
+      "rank": 32,
+      "gloss": "会",
+      "train_token_count": 591,
+      "train_sample_count": 561,
+      "dev_token_count": 47,
+      "test_token_count": 57,
+      "all_token_count": 695,
+      "cumulative_train_token_coverage": 0.32987570486261725
+    },
+    {
+      "rank": 33,
+      "gloss": "全部",
+      "train_token_count": 588,
+      "train_sample_count": 573,
+      "dev_token_count": 39,
+      "test_token_count": 38,
+      "all_token_count": 665,
+      "cumulative_train_token_coverage": 0.33427315015630377
+    },
+    {
+      "rank": 34,
+      "gloss": "在",
+      "train_token_count": 584,
+      "train_sample_count": 578,
+      "dev_token_count": 39,
+      "test_token_count": 43,
+      "all_token_count": 666,
+      "cumulative_train_token_coverage": 0.3386406808561557
+    },
+    {
+      "rank": 35,
+      "gloss": "到",
+      "train_token_count": 572,
+      "train_sample_count": 537,
+      "dev_token_count": 38,
+      "test_token_count": 45,
+      "all_token_count": 655,
+      "cumulative_train_token_coverage": 0.3429184677745038
+    },
+    {
+      "rank": 36,
+      "gloss": "妈妈",
+      "train_token_count": 563,
+      "train_sample_count": 545,
+      "dev_token_count": 23,
+      "test_token_count": 26,
+      "all_token_count": 612,
+      "cumulative_train_token_coverage": 0.3471289468567241
+    },
+    {
+      "rank": 37,
+      "gloss": "老师",
+      "train_token_count": 549,
+      "train_sample_count": 546,
+      "dev_token_count": 35,
+      "test_token_count": 35,
+      "all_token_count": 619,
+      "cumulative_train_token_coverage": 0.3512347248605232
+    },
+    {
+      "rank": 38,
+      "gloss": "爸爸",
+      "train_token_count": 500,
+      "train_sample_count": 492,
+      "dev_token_count": 14,
+      "test_token_count": 18,
+      "all_token_count": 532,
+      "cumulative_train_token_coverage": 0.3549740490898485
+    },
+    {
+      "rank": 39,
+      "gloss": "对",
+      "train_token_count": 491,
+      "train_sample_count": 483,
+      "dev_token_count": 33,
+      "test_token_count": 47,
+      "all_token_count": 571,
+      "cumulative_train_token_coverage": 0.3586460654830459
+    },
+    {
+      "rank": 40,
+      "gloss": "喜欢",
+      "train_token_count": 485,
+      "train_sample_count": 467,
+      "dev_token_count": 30,
+      "test_token_count": 38,
+      "all_token_count": 553,
+      "cumulative_train_token_coverage": 0.3622732099854914
+    },
+    {
+      "rank": 41,
+      "gloss": "事情",
+      "train_token_count": 463,
+      "train_sample_count": 457,
+      "dev_token_count": 24,
+      "test_token_count": 28,
+      "all_token_count": 515,
+      "cumulative_train_token_coverage": 0.36573582422184664
+    },
+    {
+      "rank": 42,
+      "gloss": "给",
+      "train_token_count": 435,
+      "train_sample_count": 423,
+      "dev_token_count": 30,
+      "test_token_count": 33,
+      "all_token_count": 498,
+      "cumulative_train_token_coverage": 0.3689890363013596
+    },
+    {
+      "rank": 43,
+      "gloss": "好了",
+      "train_token_count": 429,
+      "train_sample_count": 421,
+      "dev_token_count": 26,
+      "test_token_count": 28,
+      "all_token_count": 483,
+      "cumulative_train_token_coverage": 0.3721973764901207
+    },
+    {
+      "rank": 44,
+      "gloss": "学",
+      "train_token_count": 425,
+      "train_sample_count": 392,
+      "dev_token_count": 28,
+      "test_token_count": 27,
+      "all_token_count": 480,
+      "cumulative_train_token_coverage": 0.37537580208504717
+    },
+    {
+      "rank": 45,
+      "gloss": "2",
+      "train_token_count": 414,
+      "train_sample_count": 400,
+      "dev_token_count": 29,
+      "test_token_count": 37,
+      "all_token_count": 480,
+      "cumulative_train_token_coverage": 0.3784719625469285
+    },
+    {
+      "rank": 46,
+      "gloss": "年",
+      "train_token_count": 402,
+      "train_sample_count": 311,
+      "dev_token_count": 27,
+      "test_token_count": 23,
+      "all_token_count": 452,
+      "cumulative_train_token_coverage": 0.38147837922730604
+    },
+    {
+      "rank": 47,
+      "gloss": "但是",
+      "train_token_count": 392,
+      "train_sample_count": 392,
+      "dev_token_count": 16,
+      "test_token_count": 17,
+      "all_token_count": 425,
+      "cumulative_train_token_coverage": 0.38441000942309705
+    },
+    {
+      "rank": 48,
+      "gloss": "病",
+      "train_token_count": 389,
+      "train_sample_count": 334,
+      "dev_token_count": 13,
+      "test_token_count": 15,
+      "all_token_count": 417,
+      "cumulative_train_token_coverage": 0.38731920367351214
+    },
+    {
+      "rank": 49,
+      "gloss": "快",
+      "train_token_count": 374,
+      "train_sample_count": 354,
+      "dev_token_count": 23,
+      "test_token_count": 19,
+      "all_token_count": 416,
+      "cumulative_train_token_coverage": 0.39011621819704745
+    },
+    {
+      "rank": 50,
+      "gloss": "喝",
+      "train_token_count": 362,
+      "train_sample_count": 331,
+      "dev_token_count": 18,
+      "test_token_count": 22,
+      "all_token_count": 402,
+      "cumulative_train_token_coverage": 0.3928234889390789
+    },
+    {
+      "rank": 51,
+      "gloss": "他们",
+      "train_token_count": 356,
+      "train_sample_count": 345,
+      "dev_token_count": 25,
+      "test_token_count": 23,
+      "all_token_count": 404,
+      "cumulative_train_token_coverage": 0.39548588779035854
+    },
+    {
+      "rank": 52,
+      "gloss": "还",
+      "train_token_count": 355,
+      "train_sample_count": 347,
+      "dev_token_count": 38,
+      "test_token_count": 43,
+      "all_token_count": 436,
+      "cumulative_train_token_coverage": 0.39814080799317947
+    },
+    {
+      "rank": 53,
+      "gloss": "来",
+      "train_token_count": 348,
+      "train_sample_count": 345,
+      "dev_token_count": 18,
+      "test_token_count": 24,
+      "all_token_count": 390,
+      "cumulative_train_token_coverage": 0.40074337765678986
+    },
+    {
+      "rank": 54,
+      "gloss": "东西",
+      "train_token_count": 343,
+      "train_sample_count": 330,
+      "dev_token_count": 30,
+      "test_token_count": 30,
+      "all_token_count": 403,
+      "cumulative_train_token_coverage": 0.403308554078107
+    },
+    {
+      "rank": 55,
+      "gloss": "不好",
+      "train_token_count": 338,
+      "train_sample_count": 316,
+      "dev_token_count": 11,
+      "test_token_count": 16,
+      "all_token_count": 365,
+      "cumulative_train_token_coverage": 0.40583633725713086
+    },
+    {
+      "rank": 56,
+      "gloss": "朋友",
+      "train_token_count": 335,
+      "train_sample_count": 323,
+      "dev_token_count": 23,
+      "test_token_count": 24,
+      "all_token_count": 382,
+      "cumulative_train_token_coverage": 0.40834168449077884
+    },
+    {
+      "rank": 57,
+      "gloss": "一直",
+      "train_token_count": 331,
+      "train_sample_count": 322,
+      "dev_token_count": 14,
+      "test_token_count": 18,
+      "all_token_count": 363,
+      "cumulative_train_token_coverage": 0.41081711713059216
+    },
+    {
+      "rank": 58,
+      "gloss": "为",
+      "train_token_count": 330,
+      "train_sample_count": 324,
+      "dev_token_count": 9,
+      "test_token_count": 12,
+      "all_token_count": 351,
+      "cumulative_train_token_coverage": 0.41328507112194685
+    },
+    {
+      "rank": 59,
+      "gloss": "大",
+      "train_token_count": 328,
+      "train_sample_count": 325,
+      "dev_token_count": 35,
+      "test_token_count": 36,
+      "all_token_count": 399,
+      "cumulative_train_token_coverage": 0.4157380678163842
+    },
+    {
+      "rank": 60,
+      "gloss": "找",
+      "train_token_count": 325,
+      "train_sample_count": 301,
+      "dev_token_count": 17,
+      "test_token_count": 20,
+      "all_token_count": 362,
+      "cumulative_train_token_coverage": 0.4181686285654457
+    },
+    {
+      "rank": 61,
+      "gloss": "明天",
+      "train_token_count": 308,
+      "train_sample_count": 305,
+      "dev_token_count": 13,
+      "test_token_count": 14,
+      "all_token_count": 335,
+      "cumulative_train_token_coverage": 0.42047205229071
+    },
+    {
+      "rank": 62,
+      "gloss": "多少",
+      "train_token_count": 308,
+      "train_sample_count": 296,
+      "dev_token_count": 20,
+      "test_token_count": 18,
+      "all_token_count": 346,
+      "cumulative_train_token_coverage": 0.42277547601597437
+    },
+    {
+      "rank": 63,
+      "gloss": "孩子",
+      "train_token_count": 305,
+      "train_sample_count": 294,
+      "dev_token_count": 21,
+      "test_token_count": 22,
+      "all_token_count": 348,
+      "cumulative_train_token_coverage": 0.4250564637958628
+    },
+    {
+      "rank": 64,
+      "gloss": "书",
+      "train_token_count": 305,
+      "train_sample_count": 272,
+      "dev_token_count": 16,
+      "test_token_count": 23,
+      "all_token_count": 344,
+      "cumulative_train_token_coverage": 0.4273374515757512
+    },
+    {
+      "rank": 65,
+      "gloss": "晚上",
+      "train_token_count": 299,
+      "train_sample_count": 294,
+      "dev_token_count": 20,
+      "test_token_count": 18,
+      "all_token_count": 337,
+      "cumulative_train_token_coverage": 0.42957356746488773
+    },
+    {
+      "rank": 66,
+      "gloss": "身体",
+      "train_token_count": 298,
+      "train_sample_count": 283,
+      "dev_token_count": 18,
+      "test_token_count": 28,
+      "all_token_count": 344,
+      "cumulative_train_token_coverage": 0.43180220470556563
+    },
+    {
+      "rank": 67,
+      "gloss": "帮助",
+      "train_token_count": 295,
+      "train_sample_count": 280,
+      "dev_token_count": 16,
+      "test_token_count": 15,
+      "all_token_count": 326,
+      "cumulative_train_token_coverage": 0.43400840600086754
+    },
+    {
+      "rank": 68,
+      "gloss": "走",
+      "train_token_count": 295,
+      "train_sample_count": 261,
+      "dev_token_count": 15,
+      "test_token_count": 18,
+      "all_token_count": 328,
+      "cumulative_train_token_coverage": 0.43621460729616945
+    },
+    {
+      "rank": 69,
+      "gloss": "美丽",
+      "train_token_count": 288,
+      "train_sample_count": 277,
+      "dev_token_count": 20,
+      "test_token_count": 18,
+      "all_token_count": 326,
+      "cumulative_train_token_coverage": 0.4383684580522608
+    },
+    {
+      "rank": 70,
+      "gloss": "学校",
+      "train_token_count": 282,
+      "train_sample_count": 279,
+      "dev_token_count": 17,
+      "test_token_count": 24,
+      "all_token_count": 323,
+      "cumulative_train_token_coverage": 0.4404774369176003
+    },
+    {
+      "rank": 71,
+      "gloss": "新",
+      "train_token_count": 273,
+      "train_sample_count": 252,
+      "dev_token_count": 18,
+      "test_token_count": 16,
+      "all_token_count": 307,
+      "cumulative_train_token_coverage": 0.4425191079468119
+    },
+    {
+      "rank": 72,
+      "gloss": "写",
+      "train_token_count": 265,
+      "train_sample_count": 229,
+      "dev_token_count": 27,
+      "test_token_count": 30,
+      "all_token_count": 322,
+      "cumulative_train_token_coverage": 0.44450094978835425
+    },
+    {
+      "rank": 73,
+      "gloss": "早",
+      "train_token_count": 263,
+      "train_sample_count": 249,
+      "dev_token_count": 16,
+      "test_token_count": 14,
+      "all_token_count": 293,
+      "cumulative_train_token_coverage": 0.4464678343329793
+    },
+    {
+      "rank": 74,
+      "gloss": "不喜欢",
+      "train_token_count": 260,
+      "train_sample_count": 249,
+      "dev_token_count": 9,
+      "test_token_count": 7,
+      "all_token_count": 276,
+      "cumulative_train_token_coverage": 0.4484122829322285
+    },
+    {
+      "rank": 75,
+      "gloss": "手机",
+      "train_token_count": 260,
+      "train_sample_count": 235,
+      "dev_token_count": 14,
+      "test_token_count": 19,
+      "all_token_count": 293,
+      "cumulative_train_token_coverage": 0.45035673153147765
+    },
+    {
+      "rank": 76,
+      "gloss": "感觉",
+      "train_token_count": 259,
+      "train_sample_count": 256,
+      "dev_token_count": 16,
+      "test_token_count": 19,
+      "all_token_count": 294,
+      "cumulative_train_token_coverage": 0.4522937014822681
+    },
+    {
+      "rank": 77,
+      "gloss": "带",
+      "train_token_count": 254,
+      "train_sample_count": 242,
+      "dev_token_count": 10,
+      "test_token_count": 19,
+      "all_token_count": 283,
+      "cumulative_train_token_coverage": 0.4541932781907654
+    },
+    {
+      "rank": 78,
+      "gloss": "生活",
+      "train_token_count": 251,
+      "train_sample_count": 245,
+      "dev_token_count": 15,
+      "test_token_count": 21,
+      "all_token_count": 287,
+      "cumulative_train_token_coverage": 0.45607041895388667
+    },
+    {
+      "rank": 79,
+      "gloss": "天",
+      "train_token_count": 250,
+      "train_sample_count": 237,
+      "dev_token_count": 18,
+      "test_token_count": 18,
+      "all_token_count": 286,
+      "cumulative_train_token_coverage": 0.4579400810685493
+    },
+    {
+      "rank": 80,
+      "gloss": "努力",
+      "train_token_count": 248,
+      "train_sample_count": 226,
+      "dev_token_count": 18,
+      "test_token_count": 23,
+      "all_token_count": 289,
+      "cumulative_train_token_coverage": 0.45979478588629463
+    },
+    {
+      "rank": 81,
+      "gloss": "最",
+      "train_token_count": 245,
+      "train_sample_count": 237,
+      "dev_token_count": 29,
+      "test_token_count": 23,
+      "all_token_count": 297,
+      "cumulative_train_token_coverage": 0.461627054758664
+    },
+    {
+      "rank": 82,
+      "gloss": "和",
+      "train_token_count": 244,
+      "train_sample_count": 235,
+      "dev_token_count": 12,
+      "test_token_count": 15,
+      "all_token_count": 271,
+      "cumulative_train_token_coverage": 0.46345184498257475
+    },
+    {
+      "rank": 83,
+      "gloss": "中国",
+      "train_token_count": 239,
+      "train_sample_count": 231,
+      "dev_token_count": 15,
+      "test_token_count": 18,
+      "all_token_count": 272,
+      "cumulative_train_token_coverage": 0.46523924196419225
+    },
+    {
+      "rank": 84,
+      "gloss": "睡觉",
+      "train_token_count": 238,
+      "train_sample_count": 223,
+      "dev_token_count": 2,
+      "test_token_count": 5,
+      "all_token_count": 245,
+      "cumulative_train_token_coverage": 0.4670191602973511
+    },
+    {
+      "rank": 85,
+      "gloss": "旅游",
+      "train_token_count": 236,
+      "train_sample_count": 233,
+      "dev_token_count": 8,
+      "test_token_count": 9,
+      "all_token_count": 253,
+      "cumulative_train_token_coverage": 0.4687841213335926
+    },
+    {
+      "rank": 86,
+      "gloss": "难",
+      "train_token_count": 236,
+      "train_sample_count": 227,
+      "dev_token_count": 15,
+      "test_token_count": 14,
+      "all_token_count": 265,
+      "cumulative_train_token_coverage": 0.4705490823698341
+    },
+    {
+      "rank": 87,
+      "gloss": "每天",
+      "train_token_count": 235,
+      "train_sample_count": 226,
+      "dev_token_count": 9,
+      "test_token_count": 13,
+      "all_token_count": 257,
+      "cumulative_train_token_coverage": 0.472306564757617
+    },
+    {
+      "rank": 88,
+      "gloss": "不是",
+      "train_token_count": 235,
+      "train_sample_count": 225,
+      "dev_token_count": 16,
+      "test_token_count": 21,
+      "all_token_count": 272,
+      "cumulative_train_token_coverage": 0.4740640471453999
+    },
+    {
+      "rank": 89,
+      "gloss": "电影",
+      "train_token_count": 234,
+      "train_sample_count": 228,
+      "dev_token_count": 6,
+      "test_token_count": 8,
+      "all_token_count": 248,
+      "cumulative_train_token_coverage": 0.4758140508847241
+    },
+    {
+      "rank": 90,
+      "gloss": "方法",
+      "train_token_count": 234,
+      "train_sample_count": 226,
+      "dev_token_count": 21,
+      "test_token_count": 18,
+      "all_token_count": 273,
+      "cumulative_train_token_coverage": 0.47756405462404833
+    },
+    {
+      "rank": 91,
+      "gloss": "每",
+      "train_token_count": 234,
+      "train_sample_count": 225,
+      "dev_token_count": 20,
+      "test_token_count": 18,
+      "all_token_count": 272,
+      "cumulative_train_token_coverage": 0.4793140583633726
+    },
+    {
+      "rank": 92,
+      "gloss": "各种",
+      "train_token_count": 231,
+      "train_sample_count": 211,
+      "dev_token_count": 18,
+      "test_token_count": 15,
+      "all_token_count": 264,
+      "cumulative_train_token_coverage": 0.4810416261573208
+    },
+    {
+      "rank": 93,
+      "gloss": "考试",
+      "train_token_count": 230,
+      "train_sample_count": 227,
+      "dev_token_count": 8,
+      "test_token_count": 10,
+      "all_token_count": 248,
+      "cumulative_train_token_coverage": 0.4827617153028105
+    },
+    {
+      "rank": 94,
+      "gloss": "医生",
+      "train_token_count": 230,
+      "train_sample_count": 217,
+      "dev_token_count": 10,
+      "test_token_count": 10,
+      "all_token_count": 250,
+      "cumulative_train_token_coverage": 0.4844818044483001
+    },
+    {
+      "rank": 95,
+      "gloss": "心",
+      "train_token_count": 229,
+      "train_sample_count": 223,
+      "dev_token_count": 16,
+      "test_token_count": 23,
+      "all_token_count": 268,
+      "cumulative_train_token_coverage": 0.48619441494533105
+    },
+    {
+      "rank": 96,
+      "gloss": "公司",
+      "train_token_count": 228,
+      "train_sample_count": 228,
+      "dev_token_count": 21,
+      "test_token_count": 23,
+      "all_token_count": 272,
+      "cumulative_train_token_coverage": 0.4878995467939034
+    },
+    {
+      "rank": 97,
+      "gloss": "让",
+      "train_token_count": 228,
+      "train_sample_count": 219,
+      "dev_token_count": 15,
+      "test_token_count": 17,
+      "all_token_count": 260,
+      "cumulative_train_token_coverage": 0.48960467864247575
+    },
+    {
+      "rank": 98,
+      "gloss": "增加",
+      "train_token_count": 222,
+      "train_sample_count": 178,
+      "dev_token_count": 11,
+      "test_token_count": 13,
+      "all_token_count": 246,
+      "cumulative_train_token_coverage": 0.49126493860029613
+    },
+    {
+      "rank": 99,
+      "gloss": "必须",
+      "train_token_count": 221,
+      "train_sample_count": 218,
+      "dev_token_count": 20,
+      "test_token_count": 20,
+      "all_token_count": 261,
+      "cumulative_train_token_coverage": 0.49291771990965794
+    },
+    {
+      "rank": 100,
+      "gloss": "后",
+      "train_token_count": 218,
+      "train_sample_count": 218,
+      "dev_token_count": 12,
+      "test_token_count": 13,
+      "all_token_count": 243,
+      "cumulative_train_token_coverage": 0.49454806527364376
+    },
+    {
+      "rank": 101,
+      "gloss": "因为",
+      "train_token_count": 218,
+      "train_sample_count": 218,
+      "dev_token_count": 14,
+      "test_token_count": 13,
+      "all_token_count": 245,
+      "cumulative_train_token_coverage": 0.4961784106376296
+    },
+    {
+      "rank": 102,
+      "gloss": "像",
+      "train_token_count": 218,
+      "train_sample_count": 213,
+      "dev_token_count": 11,
+      "test_token_count": 10,
+      "all_token_count": 239,
+      "cumulative_train_token_coverage": 0.4978087560016154
+    },
+    {
+      "rank": 103,
+      "gloss": "用",
+      "train_token_count": 218,
+      "train_sample_count": 197,
+      "dev_token_count": 16,
+      "test_token_count": 19,
+      "all_token_count": 253,
+      "cumulative_train_token_coverage": 0.4994391013656012
+    },
+    {
+      "rank": 104,
+      "gloss": "路",
+      "train_token_count": 214,
+      "train_sample_count": 214,
+      "dev_token_count": 5,
+      "test_token_count": 5,
+      "all_token_count": 224,
+      "cumulative_train_token_coverage": 0.5010395321357525
+    },
+    {
+      "rank": 105,
+      "gloss": "女",
+      "train_token_count": 213,
+      "train_sample_count": 213,
+      "dev_token_count": 16,
+      "test_token_count": 19,
+      "all_token_count": 248,
+      "cumulative_train_token_coverage": 0.502632484257445
+    },
+    {
+      "rank": 106,
+      "gloss": "拿",
+      "train_token_count": 209,
+      "train_sample_count": 204,
+      "dev_token_count": 20,
+      "test_token_count": 20,
+      "all_token_count": 249,
+      "cumulative_train_token_coverage": 0.5041955217853029
+    },
+    {
+      "rank": 107,
+      "gloss": "那",
+      "train_token_count": 209,
+      "train_sample_count": 200,
+      "dev_token_count": 11,
+      "test_token_count": 13,
+      "all_token_count": 233,
+      "cumulative_train_token_coverage": 0.5057585593131609
+    },
+    {
+      "rank": 108,
+      "gloss": "变",
+      "train_token_count": 204,
+      "train_sample_count": 168,
+      "dev_token_count": 21,
+      "test_token_count": 27,
+      "all_token_count": 252,
+      "cumulative_train_token_coverage": 0.5072842035987256
+    },
+    {
+      "rank": 109,
+      "gloss": "大家",
+      "train_token_count": 202,
+      "train_sample_count": 196,
+      "dev_token_count": 6,
+      "test_token_count": 7,
+      "all_token_count": 215,
+      "cumulative_train_token_coverage": 0.508794890587373
+    },
+    {
+      "rank": 110,
+      "gloss": "成功",
+      "train_token_count": 200,
+      "train_sample_count": 197,
+      "dev_token_count": 22,
+      "test_token_count": 33,
+      "all_token_count": 255,
+      "cumulative_train_token_coverage": 0.5102906202791032
+    },
+    {
+      "rank": 111,
+      "gloss": "一起",
+      "train_token_count": 199,
+      "train_sample_count": 194,
+      "dev_token_count": 2,
+      "test_token_count": 1,
+      "all_token_count": 202,
+      "cumulative_train_token_coverage": 0.5117788713223747
+    },
+    {
+      "rank": 112,
+      "gloss": "错误",
+      "train_token_count": 197,
+      "train_sample_count": 192,
+      "dev_token_count": 8,
+      "test_token_count": 6,
+      "all_token_count": 211,
+      "cumulative_train_token_coverage": 0.5132521650687287
+    },
+    {
+      "rank": 113,
+      "gloss": "你们",
+      "train_token_count": 194,
+      "train_sample_count": 189,
+      "dev_token_count": 9,
+      "test_token_count": 8,
+      "all_token_count": 211,
+      "cumulative_train_token_coverage": 0.514703022869707
+    },
+    {
+      "rank": 114,
+      "gloss": "组",
+      "train_token_count": 194,
+      "train_sample_count": 182,
+      "dev_token_count": 11,
+      "test_token_count": 11,
+      "all_token_count": 216,
+      "cumulative_train_token_coverage": 0.5161538806706852
+    },
+    {
+      "rank": 115,
+      "gloss": "准备",
+      "train_token_count": 193,
+      "train_sample_count": 181,
+      "dev_token_count": 5,
+      "test_token_count": 9,
+      "all_token_count": 207,
+      "cumulative_train_token_coverage": 0.5175972598232047
+    },
+    {
+      "rank": 116,
+      "gloss": "学生",
+      "train_token_count": 192,
+      "train_sample_count": 192,
+      "dev_token_count": 15,
+      "test_token_count": 18,
+      "all_token_count": 225,
+      "cumulative_train_token_coverage": 0.5190331603272657
+    },
+    {
+      "rank": 117,
+      "gloss": "前",
+      "train_token_count": 189,
+      "train_sample_count": 189,
+      "dev_token_count": 12,
+      "test_token_count": 14,
+      "all_token_count": 215,
+      "cumulative_train_token_coverage": 0.5204466248859506
+    },
+    {
+      "rank": 118,
+      "gloss": "一样",
+      "train_token_count": 189,
+      "train_sample_count": 183,
+      "dev_token_count": 6,
+      "test_token_count": 9,
+      "all_token_count": 204,
+      "cumulative_train_token_coverage": 0.5218600894446356
+    },
+    {
+      "rank": 119,
+      "gloss": "简单",
+      "train_token_count": 188,
+      "train_sample_count": 178,
+      "dev_token_count": 12,
+      "test_token_count": 13,
+      "all_token_count": 213,
+      "cumulative_train_token_coverage": 0.5232660753548619
+    },
+    {
+      "rank": 120,
+      "gloss": "情况",
+      "train_token_count": 185,
+      "train_sample_count": 185,
+      "dev_token_count": 8,
+      "test_token_count": 5,
+      "all_token_count": 198,
+      "cumulative_train_token_coverage": 0.5246496253197123
+    },
+    {
+      "rank": 121,
+      "gloss": "请",
+      "train_token_count": 184,
+      "train_sample_count": 184,
+      "dev_token_count": 9,
+      "test_token_count": 9,
+      "all_token_count": 202,
+      "cumulative_train_token_coverage": 0.5260256966361039
+    },
+    {
+      "rank": 122,
+      "gloss": "点",
+      "train_token_count": 183,
+      "train_sample_count": 168,
+      "dev_token_count": 11,
+      "test_token_count": 10,
+      "all_token_count": 204,
+      "cumulative_train_token_coverage": 0.527394289304037
+    },
+    {
+      "rank": 123,
+      "gloss": "如果",
+      "train_token_count": 182,
+      "train_sample_count": 179,
+      "dev_token_count": 9,
+      "test_token_count": 13,
+      "all_token_count": 204,
+      "cumulative_train_token_coverage": 0.5287554033235113
+    },
+    {
+      "rank": 124,
+      "gloss": "驾驶",
+      "train_token_count": 181,
+      "train_sample_count": 173,
+      "dev_token_count": 9,
+      "test_token_count": 6,
+      "all_token_count": 196,
+      "cumulative_train_token_coverage": 0.5301090386945271
+    },
+    {
+      "rank": 125,
+      "gloss": "火车",
+      "train_token_count": 181,
+      "train_sample_count": 168,
+      "dev_token_count": 4,
+      "test_token_count": 4,
+      "all_token_count": 189,
+      "cumulative_train_token_coverage": 0.5314626740655429
+    },
+    {
+      "rank": 126,
+      "gloss": "同学",
+      "train_token_count": 180,
+      "train_sample_count": 177,
+      "dev_token_count": 13,
+      "test_token_count": 15,
+      "all_token_count": 208,
+      "cumulative_train_token_coverage": 0.5328088307880999
+    },
+    {
+      "rank": 127,
+      "gloss": "道理",
+      "train_token_count": 178,
+      "train_sample_count": 173,
+      "dev_token_count": 5,
+      "test_token_count": 7,
+      "all_token_count": 190,
+      "cumulative_train_token_coverage": 0.5341400302137398
+    },
+    {
+      "rank": 128,
+      "gloss": "别",
+      "train_token_count": 177,
+      "train_sample_count": 170,
+      "dev_token_count": 10,
+      "test_token_count": 14,
+      "all_token_count": 201,
+      "cumulative_train_token_coverage": 0.5354637509909209
+    },
+    {
+      "rank": 129,
+      "gloss": "真",
+      "train_token_count": 177,
+      "train_sample_count": 168,
+      "dev_token_count": 5,
+      "test_token_count": 4,
+      "all_token_count": 186,
+      "cumulative_train_token_coverage": 0.536787471768102
+    },
+    {
+      "rank": 130,
+      "gloss": "外",
+      "train_token_count": 176,
+      "train_sample_count": 172,
+      "dev_token_count": 3,
+      "test_token_count": 5,
+      "all_token_count": 184,
+      "cumulative_train_token_coverage": 0.5381037138968245
+    },
+    {
+      "rank": 131,
+      "gloss": "读书",
+      "train_token_count": 176,
+      "train_sample_count": 167,
+      "dev_token_count": 5,
+      "test_token_count": 6,
+      "all_token_count": 187,
+      "cumulative_train_token_coverage": 0.539419956025547
+    },
+    {
+      "rank": 132,
+      "gloss": "运动",
+      "train_token_count": 169,
+      "train_sample_count": 163,
+      "dev_token_count": 7,
+      "test_token_count": 11,
+      "all_token_count": 187,
+      "cumulative_train_token_coverage": 0.540683847615059
+    },
+    {
+      "rank": 133,
+      "gloss": "重要",
+      "train_token_count": 169,
+      "train_sample_count": 162,
+      "dev_token_count": 8,
+      "test_token_count": 7,
+      "all_token_count": 184,
+      "cumulative_train_token_coverage": 0.541947739204571
+    },
+    {
+      "rank": 134,
+      "gloss": "车",
+      "train_token_count": 169,
+      "train_sample_count": 151,
+      "dev_token_count": 4,
+      "test_token_count": 2,
+      "all_token_count": 175,
+      "cumulative_train_token_coverage": 0.5432116307940829
+    },
+    {
+      "rank": 135,
+      "gloss": "听",
+      "train_token_count": 168,
+      "train_sample_count": 163,
+      "dev_token_count": 8,
+      "test_token_count": 14,
+      "all_token_count": 190,
+      "cumulative_train_token_coverage": 0.5444680437351361
+    },
+    {
+      "rank": 136,
+      "gloss": "跳舞",
+      "train_token_count": 168,
+      "train_sample_count": 147,
+      "dev_token_count": 4,
+      "test_token_count": 8,
+      "all_token_count": 180,
+      "cumulative_train_token_coverage": 0.5457244566761895
+    },
+    {
+      "rank": 137,
+      "gloss": "知道",
+      "train_token_count": 167,
+      "train_sample_count": 167,
+      "dev_token_count": 19,
+      "test_token_count": 15,
+      "all_token_count": 201,
+      "cumulative_train_token_coverage": 0.5469733909687842
+    },
+    {
+      "rank": 138,
+      "gloss": "玩",
+      "train_token_count": 166,
+      "train_sample_count": 141,
+      "dev_token_count": 4,
+      "test_token_count": 7,
+      "all_token_count": 177,
+      "cumulative_train_token_coverage": 0.5482148466129201
+    },
+    {
+      "rank": 139,
+      "gloss": "上海",
+      "train_token_count": 165,
+      "train_sample_count": 165,
+      "dev_token_count": 8,
+      "test_token_count": 9,
+      "all_token_count": 182,
+      "cumulative_train_token_coverage": 0.5494488236085975
+    },
+    {
+      "rank": 140,
+      "gloss": "等",
+      "train_token_count": 164,
+      "train_sample_count": 145,
+      "dev_token_count": 3,
+      "test_token_count": 5,
+      "all_token_count": 172,
+      "cumulative_train_token_coverage": 0.5506753219558161
+    },
+    {
+      "rank": 141,
+      "gloss": "教",
+      "train_token_count": 163,
+      "train_sample_count": 144,
+      "dev_token_count": 14,
+      "test_token_count": 13,
+      "all_token_count": 190,
+      "cumulative_train_token_coverage": 0.5518943416545762
+    },
+    {
+      "rank": 142,
+      "gloss": "害怕",
+      "train_token_count": 160,
+      "train_sample_count": 133,
+      "dev_token_count": 9,
+      "test_token_count": 14,
+      "all_token_count": 183,
+      "cumulative_train_token_coverage": 0.5530909254079602
+    },
+    {
+      "rank": 143,
+      "gloss": "3",
+      "train_token_count": 155,
+      "train_sample_count": 140,
+      "dev_token_count": 5,
+      "test_token_count": 5,
+      "all_token_count": 165,
+      "cumulative_train_token_coverage": 0.5542501159190512
+    },
+    {
+      "rank": 144,
+      "gloss": "开始",
+      "train_token_count": 154,
+      "train_sample_count": 154,
+      "dev_token_count": 10,
+      "test_token_count": 16,
+      "all_token_count": 180,
+      "cumulative_train_token_coverage": 0.5554018277816833
+    },
+    {
+      "rank": 145,
+      "gloss": "大学",
+      "train_token_count": 154,
+      "train_sample_count": 152,
+      "dev_token_count": 4,
+      "test_token_count": 5,
+      "all_token_count": 163,
+      "cumulative_train_token_coverage": 0.5565535396443155
+    },
+    {
+      "rank": 146,
+      "gloss": "下雨",
+      "train_token_count": 154,
+      "train_sample_count": 148,
+      "dev_token_count": 5,
+      "test_token_count": 6,
+      "all_token_count": 165,
+      "cumulative_train_token_coverage": 0.5577052515069477
+    },
+    {
+      "rank": 147,
+      "gloss": "坏",
+      "train_token_count": 154,
+      "train_sample_count": 148,
+      "dev_token_count": 10,
+      "test_token_count": 7,
+      "all_token_count": 171,
+      "cumulative_train_token_coverage": 0.5588569633695798
+    },
+    {
+      "rank": 148,
+      "gloss": "大概",
+      "train_token_count": 153,
+      "train_sample_count": 150,
+      "dev_token_count": 7,
+      "test_token_count": 11,
+      "all_token_count": 171,
+      "cumulative_train_token_coverage": 0.5600011965837534
+    },
+    {
+      "rank": 149,
+      "gloss": "方便",
+      "train_token_count": 153,
+      "train_sample_count": 150,
+      "dev_token_count": 8,
+      "test_token_count": 15,
+      "all_token_count": 176,
+      "cumulative_train_token_coverage": 0.5611454297979269
+    },
+    {
+      "rank": 150,
+      "gloss": "改变",
+      "train_token_count": 153,
+      "train_sample_count": 123,
+      "dev_token_count": 10,
+      "test_token_count": 11,
+      "all_token_count": 174,
+      "cumulative_train_token_coverage": 0.5622896630121005
+    },
+    {
+      "rank": 151,
+      "gloss": "员工",
+      "train_token_count": 152,
+      "train_sample_count": 149,
+      "dev_token_count": 14,
+      "test_token_count": 15,
+      "all_token_count": 181,
+      "cumulative_train_token_coverage": 0.5634264175778153
+    },
+    {
+      "rank": 152,
+      "gloss": "衣服",
+      "train_token_count": 152,
+      "train_sample_count": 149,
+      "dev_token_count": 14,
+      "test_token_count": 16,
+      "all_token_count": 182,
+      "cumulative_train_token_coverage": 0.5645631721435302
+    },
+    {
+      "rank": 153,
+      "gloss": "菜",
+      "train_token_count": 152,
+      "train_sample_count": 144,
+      "dev_token_count": 8,
+      "test_token_count": 14,
+      "all_token_count": 174,
+      "cumulative_train_token_coverage": 0.5656999267092451
+    },
+    {
+      "rank": 154,
+      "gloss": "水",
+      "train_token_count": 152,
+      "train_sample_count": 132,
+      "dev_token_count": 6,
+      "test_token_count": 9,
+      "all_token_count": 167,
+      "cumulative_train_token_coverage": 0.56683668127496
+    },
+    {
+      "rank": 155,
+      "gloss": "电脑",
+      "train_token_count": 151,
+      "train_sample_count": 149,
+      "dev_token_count": 10,
+      "test_token_count": 12,
+      "all_token_count": 173,
+      "cumulative_train_token_coverage": 0.5679659571922162
+    },
+    {
+      "rank": 156,
+      "gloss": "课",
+      "train_token_count": 151,
+      "train_sample_count": 140,
+      "dev_token_count": 6,
+      "test_token_count": 8,
+      "all_token_count": 165,
+      "cumulative_train_token_coverage": 0.5690952331094724
+    },
+    {
+      "rank": 157,
+      "gloss": "接受",
+      "train_token_count": 147,
+      "train_sample_count": 140,
+      "dev_token_count": 6,
+      "test_token_count": 8,
+      "all_token_count": 161,
+      "cumulative_train_token_coverage": 0.5701945944328941
+    },
+    {
+      "rank": 158,
+      "gloss": "不会",
+      "train_token_count": 146,
+      "train_sample_count": 140,
+      "dev_token_count": 3,
+      "test_token_count": 3,
+      "all_token_count": 152,
+      "cumulative_train_token_coverage": 0.5712864771078571
+    },
+    {
+      "rank": 159,
+      "gloss": "联系",
+      "train_token_count": 146,
+      "train_sample_count": 137,
+      "dev_token_count": 5,
+      "test_token_count": 7,
+      "all_token_count": 158,
+      "cumulative_train_token_coverage": 0.57237835978282
+    },
+    {
+      "rank": 160,
+      "gloss": "应该",
+      "train_token_count": 145,
+      "train_sample_count": 145,
+      "dev_token_count": 13,
+      "test_token_count": 21,
+      "all_token_count": 179,
+      "cumulative_train_token_coverage": 0.5734627638093244
+    },
+    {
+      "rank": 161,
+      "gloss": "超市",
+      "train_token_count": 145,
+      "train_sample_count": 145,
+      "dev_token_count": 17,
+      "test_token_count": 15,
+      "all_token_count": 177,
+      "cumulative_train_token_coverage": 0.5745471678358287
+    },
+    {
+      "rank": 162,
+      "gloss": "骄傲",
+      "train_token_count": 145,
+      "train_sample_count": 133,
+      "dev_token_count": 7,
+      "test_token_count": 8,
+      "all_token_count": 160,
+      "cumulative_train_token_coverage": 0.575631571862333
+    },
+    {
+      "rank": 163,
+      "gloss": "男",
+      "train_token_count": 144,
+      "train_sample_count": 141,
+      "dev_token_count": 8,
+      "test_token_count": 9,
+      "all_token_count": 161,
+      "cumulative_train_token_coverage": 0.5767084972403788
+    },
+    {
+      "rank": 164,
+      "gloss": "票",
+      "train_token_count": 144,
+      "train_sample_count": 138,
+      "dev_token_count": 5,
+      "test_token_count": 4,
+      "all_token_count": 153,
+      "cumulative_train_token_coverage": 0.5777854226184244
+    },
+    {
+      "rank": 165,
+      "gloss": "上",
+      "train_token_count": 143,
+      "train_sample_count": 143,
+      "dev_token_count": 10,
+      "test_token_count": 10,
+      "all_token_count": 163,
+      "cumulative_train_token_coverage": 0.5788548693480114
+    },
+    {
+      "rank": 166,
+      "gloss": "决定",
+      "train_token_count": 143,
+      "train_sample_count": 134,
+      "dev_token_count": 2,
+      "test_token_count": 4,
+      "all_token_count": 149,
+      "cumulative_train_token_coverage": 0.5799243160775984
+    },
+    {
+      "rank": 167,
+      "gloss": "签名",
+      "train_token_count": 143,
+      "train_sample_count": 131,
+      "dev_token_count": 7,
+      "test_token_count": 10,
+      "all_token_count": 160,
+      "cumulative_train_token_coverage": 0.5809937628071855
+    },
+    {
+      "rank": 168,
+      "gloss": "医院",
+      "train_token_count": 142,
+      "train_sample_count": 134,
+      "dev_token_count": 13,
+      "test_token_count": 7,
+      "all_token_count": 162,
+      "cumulative_train_token_coverage": 0.5820557308883139
+    },
+    {
+      "rank": 169,
+      "gloss": "北京",
+      "train_token_count": 140,
+      "train_sample_count": 138,
+      "dev_token_count": 6,
+      "test_token_count": 6,
+      "all_token_count": 152,
+      "cumulative_train_token_coverage": 0.583102741672525
+    },
+    {
+      "rank": 170,
+      "gloss": "领导",
+      "train_token_count": 140,
+      "train_sample_count": 137,
+      "dev_token_count": 4,
+      "test_token_count": 7,
+      "all_token_count": 151,
+      "cumulative_train_token_coverage": 0.5841497524567361
+    },
+    {
+      "rank": 171,
+      "gloss": "检查",
+      "train_token_count": 140,
+      "train_sample_count": 122,
+      "dev_token_count": 10,
+      "test_token_count": 12,
+      "all_token_count": 162,
+      "cumulative_train_token_coverage": 0.585196763240947
+    },
+    {
+      "rank": 172,
+      "gloss": "影响",
+      "train_token_count": 139,
+      "train_sample_count": 127,
+      "dev_token_count": 3,
+      "test_token_count": 3,
+      "all_token_count": 145,
+      "cumulative_train_token_coverage": 0.5862362953766995
+    },
+    {
+      "rank": 173,
+      "gloss": "聪明",
+      "train_token_count": 137,
+      "train_sample_count": 134,
+      "dev_token_count": 10,
+      "test_token_count": 7,
+      "all_token_count": 154,
+      "cumulative_train_token_coverage": 0.5872608702155346
+    },
+    {
+      "rank": 174,
+      "gloss": "技术",
+      "train_token_count": 135,
+      "train_sample_count": 132,
+      "dev_token_count": 15,
+      "test_token_count": 13,
+      "all_token_count": 163,
+      "cumulative_train_token_coverage": 0.5882704877574525
+    },
+    {
+      "rank": 175,
+      "gloss": "亲属",
+      "train_token_count": 134,
+      "train_sample_count": 134,
+      "dev_token_count": 7,
+      "test_token_count": 9,
+      "all_token_count": 150,
+      "cumulative_train_token_coverage": 0.5892726266509116
+    },
+    {
+      "rank": 176,
+      "gloss": "失败",
+      "train_token_count": 134,
+      "train_sample_count": 113,
+      "dev_token_count": 16,
+      "test_token_count": 14,
+      "all_token_count": 164,
+      "cumulative_train_token_coverage": 0.5902747655443709
+    },
+    {
+      "rank": 177,
+      "gloss": "里",
+      "train_token_count": 133,
+      "train_sample_count": 133,
+      "dev_token_count": 14,
+      "test_token_count": 14,
+      "all_token_count": 161,
+      "cumulative_train_token_coverage": 0.5912694257893714
+    },
+    {
+      "rank": 178,
+      "gloss": "信",
+      "train_token_count": 133,
+      "train_sample_count": 130,
+      "dev_token_count": 7,
+      "test_token_count": 8,
+      "all_token_count": 148,
+      "cumulative_train_token_coverage": 0.5922640860343719
+    },
+    {
+      "rank": 179,
+      "gloss": "感冒",
+      "train_token_count": 133,
+      "train_sample_count": 125,
+      "dev_token_count": 13,
+      "test_token_count": 10,
+      "all_token_count": 156,
+      "cumulative_train_token_coverage": 0.5932587462793724
+    },
+    {
+      "rank": 180,
+      "gloss": "外国",
+      "train_token_count": 132,
+      "train_sample_count": 129,
+      "dev_token_count": 14,
+      "test_token_count": 11,
+      "all_token_count": 157,
+      "cumulative_train_token_coverage": 0.5942459278759142
+    },
+    {
+      "rank": 181,
+      "gloss": "要求",
+      "train_token_count": 132,
+      "train_sample_count": 120,
+      "dev_token_count": 6,
+      "test_token_count": 6,
+      "all_token_count": 144,
+      "cumulative_train_token_coverage": 0.5952331094724561
+    },
+    {
+      "rank": 182,
+      "gloss": "下",
+      "train_token_count": 131,
+      "train_sample_count": 131,
+      "dev_token_count": 7,
+      "test_token_count": 9,
+      "all_token_count": 147,
+      "cumulative_train_token_coverage": 0.5962128124205394
+    },
+    {
+      "rank": 183,
+      "gloss": "注意",
+      "train_token_count": 130,
+      "train_sample_count": 124,
+      "dev_token_count": 7,
+      "test_token_count": 7,
+      "all_token_count": 144,
+      "cumulative_train_token_coverage": 0.597185036720164
+    },
+    {
+      "rank": 184,
+      "gloss": "热",
+      "train_token_count": 130,
+      "train_sample_count": 122,
+      "dev_token_count": 6,
+      "test_token_count": 10,
+      "all_token_count": 146,
+      "cumulative_train_token_coverage": 0.5981572610197885
+    },
+    {
+      "rank": 185,
+      "gloss": "老",
+      "train_token_count": 129,
+      "train_sample_count": 126,
+      "dev_token_count": 5,
+      "test_token_count": 3,
+      "all_token_count": 137,
+      "cumulative_train_token_coverage": 0.5991220066709544
+    },
+    {
+      "rank": 186,
+      "gloss": "少",
+      "train_token_count": 129,
+      "train_sample_count": 120,
+      "dev_token_count": 7,
+      "test_token_count": 7,
+      "all_token_count": 143,
+      "cumulative_train_token_coverage": 0.6000867523221204
+    },
+    {
+      "rank": 187,
+      "gloss": "一般",
+      "train_token_count": 129,
+      "train_sample_count": 118,
+      "dev_token_count": 3,
+      "test_token_count": 4,
+      "all_token_count": 136,
+      "cumulative_train_token_coverage": 0.6010514979732863
+    },
+    {
+      "rank": 188,
+      "gloss": "送",
+      "train_token_count": 128,
+      "train_sample_count": 123,
+      "dev_token_count": 1,
+      "test_token_count": 2,
+      "all_token_count": 131,
+      "cumulative_train_token_coverage": 0.6020087649759935
+    },
+    {
+      "rank": 189,
+      "gloss": "高",
+      "train_token_count": 128,
+      "train_sample_count": 122,
+      "dev_token_count": 20,
+      "test_token_count": 18,
+      "all_token_count": 166,
+      "cumulative_train_token_coverage": 0.6029660319787008
+    },
+    {
+      "rank": 190,
+      "gloss": "发生",
+      "train_token_count": 128,
+      "train_sample_count": 113,
+      "dev_token_count": 9,
+      "test_token_count": 8,
+      "all_token_count": 145,
+      "cumulative_train_token_coverage": 0.6039232989814081
+    },
+    {
+      "rank": 191,
+      "gloss": "经常",
+      "train_token_count": 127,
+      "train_sample_count": 127,
+      "dev_token_count": 7,
+      "test_token_count": 8,
+      "all_token_count": 142,
+      "cumulative_train_token_coverage": 0.6048730873356567
+    },
+    {
+      "rank": 192,
+      "gloss": "刚才",
+      "train_token_count": 127,
+      "train_sample_count": 125,
+      "dev_token_count": 5,
+      "test_token_count": 4,
+      "all_token_count": 136,
+      "cumulative_train_token_coverage": 0.6058228756899053
+    },
+    {
+      "rank": 193,
+      "gloss": "担心",
+      "train_token_count": 127,
+      "train_sample_count": 112,
+      "dev_token_count": 3,
+      "test_token_count": 3,
+      "all_token_count": 133,
+      "cumulative_train_token_coverage": 0.606772664044154
+    },
+    {
+      "rank": 194,
+      "gloss": "发现",
+      "train_token_count": 126,
+      "train_sample_count": 126,
+      "dev_token_count": 13,
+      "test_token_count": 11,
+      "all_token_count": 150,
+      "cumulative_train_token_coverage": 0.6077149737499439
+    },
+    {
+      "rank": 195,
+      "gloss": "比",
+      "train_token_count": 126,
+      "train_sample_count": 121,
+      "dev_token_count": 5,
+      "test_token_count": 4,
+      "all_token_count": 135,
+      "cumulative_train_token_coverage": 0.6086572834557339
+    },
+    {
+      "rank": 196,
+      "gloss": "得",
+      "train_token_count": 126,
+      "train_sample_count": 120,
+      "dev_token_count": 8,
+      "test_token_count": 6,
+      "all_token_count": 140,
+      "cumulative_train_token_coverage": 0.6095995931615239
+    },
+    {
+      "rank": 197,
+      "gloss": "炒",
+      "train_token_count": 125,
+      "train_sample_count": 107,
+      "dev_token_count": 4,
+      "test_token_count": 5,
+      "all_token_count": 134,
+      "cumulative_train_token_coverage": 0.6105344242188552
+    },
+    {
+      "rank": 198,
+      "gloss": "分",
+      "train_token_count": 125,
+      "train_sample_count": 93,
+      "dev_token_count": 1,
+      "test_token_count": 2,
+      "all_token_count": 128,
+      "cumulative_train_token_coverage": 0.6114692552761865
+    },
+    {
+      "rank": 199,
+      "gloss": "问题",
+      "train_token_count": 124,
+      "train_sample_count": 121,
+      "dev_token_count": 9,
+      "test_token_count": 8,
+      "all_token_count": 141,
+      "cumulative_train_token_coverage": 0.6123966076850591
+    },
+    {
+      "rank": 200,
+      "gloss": "叫",
+      "train_token_count": 123,
+      "train_sample_count": 123,
+      "dev_token_count": 7,
+      "test_token_count": 4,
+      "all_token_count": 134,
+      "cumulative_train_token_coverage": 0.6133164814454731
+    }
+  ]
+}

@@ -1,0 +1,1081 @@
+9056 IEEE INTERNET OF THINGS JOURNAL, VOL. 11, NO. 5, 1 MARCH 2024
+RF-Sign: Position-Independent Sign Language
+Recognition Using Passive RFID Tags
+Haotian Zhang, Lukun Wang ,Senior Member, IEEE , Jiaming Pei ,F e n gL y u ,Senior Member, IEEE ,
+Minglu Li, Fellow, IEEE , and Chao Liu ,Member, IEEE
+Abstract —Nowadays, sign language is becoming increasingly
+important in people’s daily life. Existing solutions are often basedon wireless signals (e.g., acoustic, visible, and WiFi) or wearable
+sensors to recognize gestures, but they suffer from vulnerabil-
+ity to environmental inﬂuences, poor security, and high energyconsumption, which prevent them from accurately capturing ﬁn-ger micromovements. In this article, we propose RF-Sign, whichuses passive radio-frequency identiﬁcation (RFID) tags to cap-ture multiple ﬁnger micromovements simultaneously to enablesign language support. In particular, two main issues are stud-ied. One is the problem of positional differences when users makethe same gesture, and the other is the problem of segmenting con-secutive gestures using only empirical thresholding methods andignoring the existence of differences in thresholds for differentgestures. For position differences, we propose position models tonormalize the hand’s horizontal rotation angle and radial dis-tance. For segmenting consecutive gestures, we use the receivedsignal strength (RSS) trend of the reference tag to representthe ﬁnger micromovements state. The experimental results showthat the average accuracy reaches 92.81% under different angles,distances, and other conditions.
+Index Terms —Finger micromovements, radio-frequency iden-
+tiﬁcation (RFID), received signal strength (RSS), sign language.
+I. I NTRODUCTION
+CURRENTLY, sign language is gaining more and more
+signiﬁcance in people’s daily lives. It is gradually tran-
+sitioning from capturing coarse-grained hand movements to
+ﬁne-grained ﬁnger movements, enabling gesture-based non-
+contact human–computer interaction (HCI). Additionally, sign
+Manuscript received 14 August 2023; accepted 2 October 2023. Date of
+publication 5 October 2023; date of current version 21 February 2024. This
+work was supported in part by the National Natural Science Foundation of
+China under Grant 62272427 and Grant 62072287; in part by the ShandongProvincial Youth Innocation Team Project under Grant 2022KJ043; and inpart by the Hainan Provincial Joint Project of Sanya Yazhou Bay Science and
+Technology City under Grant 2021JJLH0060. (Haotian Zhang and Lukun
+Wang contributed equally to this work.) (Corresponding author: Chao Liu.)
+Haotian Zhang and Chao Liu are with the School of Computer Science
+and Technology, Ocean University of China, Qingdao 266404, China (e-mail:
+zht6077@stu.ouc.edu.cn; liuchao@ouc.edu.cn).
+Lukun Wang is with the College of Intelligent Equipment, Shandong
+University of Science and Technology, Qingdao 266590, China (e-mail:wanglukun@sdust.edu.cn).
+Jiaming Pei is with the Faculty of Engineering, The University of Sydney,
+Sydney, NSW 2006, Australia (e-mail: jpei0906@uni.sydney.edu.au).
+Feng Lyu is with the School of Computer Science and Engineering, Central
+South University, Changsha 410083, China (e-mail: fenglyu@csu.edu.cn).
+Minglu Li is with the College of Mathematics and Computer Science,
+Zhejiang Normal University, Jinhua 321017, China, and also with theDepartment of Computer Science and Engineering, Shanghai Jiao Tong
+University, Shanghai 200240, China (e-mail: li-ml@cs.sjtu.edu.cn).
+Digital Object Identiﬁer 10.1109/JIOT.2023.3322228language is used in combination with facial expressions to alle-
+viate communication barriers between individuals with hearingimpairment and others.
+Traditional hand gesture recognition systems [1],[2],[3],[4],
+[5],[6]use computer vision (CV) technology with cameras to
+detect hand shapes. However, they have limitations as they rely
+on light and might raise privacy concerns. Other methods [7],
+[8],[9],[10],[11] use gyroscope or accelerometer data to track
+hand movements, but these can use a lot of energy.
+To address these issues, prior research has focused on
+wireless signal-based gesture recognition technology [12],
+[13],[14],[15], which is the central theme of this article.
+These approaches typically require users to perform hand
+movements, identifying ﬁnger micromovements as interac-
+tions for HCI. Generally, these wireless signal-based methods
+recognize gestures by observing how speciﬁc gestures affectthe wireless channel, causing changes in RF signals over
+time, including amplitude, phase, and Doppler shift. Utilizing
+extracted features [16],[17],[18], these systems can iden-
+tify gestures using predeﬁned similarity measures such as
+dynamic time warping (DTW) based on template matching.
+However, such approaches are time intensive and compu-tationally demanding. Additionally, certain methods employ
+distance-based classiﬁers with one or two classes of signal
+features to distinguish ﬁnger micromovements. Yet, these tech-niques rarely account for the impact of the distance and angle
+between the antenna plane and the hand, which can potentially
+degrade classiﬁer performance.
+Recent research has demonstrated that radio-frequency iden-
+tiﬁcation (RFID) technology can offer both device-free sens-
+ing[15],[19],[20],[21],[22],[23] through multipath effects,
+and precise hand motion detection via device-based solu-
+tions [16],[17],[24],[25]. This article introduces RF-Sign,
+1
+a passive RFID tag-based device system designed to capture
+RF signal changes during various ﬁnger micromovements. In
+contrast to prior studies that primarily focused on individualgesture recognition or roughly tracking the human torso, RF-
+Sign emphasizes continuous gesture recognition. This involves
+a more robust approach to continuous segmentation andﬁne-grained ﬁnger micromovements. As depicted in Fig. 1,
+RF-Sign detects ﬁnger micromovements through RFID tags
+worn on users’ hands, which are then translated into under-standable language and displayed on the screen. Consequently,
+1The source code and dataset for RF-Sign are provided at the following
+link: https://github.com/ht0102/RF-Sign.git.
+2327-4662 c/circlecopyrt2023 IEEE. Personal use is permitted, but republication/redistribution requires IEEE permission.
+See https://www.ieee.org/publications/rights/index.html for more information.
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:37:48 UTC from IEEE Xplore.  Restrictions apply. ZHANG et al.: RF-SIGN: POSITION-INDEPENDENT SIGN LANGUAGE RECOGNITION USING PASSIVE RFID TAGS 9057
+Fig. 1. Typical application of RF-Sign. According to step 1, the user performs a ﬁnger micromovement. Step 2 is to transfer the captured information to the
+translation screen for presentation to the hearing impaired or others. They can also repeat step 1 to communicate effectively with the user.
+this signiﬁcantly enhances communication efﬁciency between
+individuals with hearing impairments and others.
+The speciﬁc idea is that RF-Sign recognizes hand gestures
+by continuously measuring signal changes during micromove-ments of the ﬁnger through RFID devices. Two signiﬁcant
+challenges have been recognized.
+The ﬁrst challenge is that it is difﬁcult to segment con-
+tinuous gestures using only empirical thresholds. This is
+because different ﬁnger micromovements lead to differentphase changes, and then the threshold should conform to the
+dynamic changes. If the threshold value set during gesture
+segmentation is too small or too large, then the starting andending points of the gesture cannot be detected accurately. To
+solve this challenge, we set a reference tag at the wrist, deter-
+mine the ﬁnger micromovement state by the received signalstrength (RSS) trend of the signal from the reference tag, and
+record the micromovement state change point. Therefore, we
+can use the RSS trend of reference tag to segment differentgestures, and then use the phase change to construct a phase
+matrix for sign language recognition.
+The second challenge involves addressing the ﬂuctuations in
+the phase proﬁle across different distance angles. Our obser-
+vations revealed that the rotation angle along the horizontal
+axis (parallel to the antenna pair plane) and the radial dis-
+tance (perpendicular to the antenna pair plane) of the hand
+exhibited varying degrees of change in relation to the phaseproﬁle, even when the user executed identical ﬁnger micro-
+movements. Consequently, attempting to directly recognize
+continuous gestures using the initial phase proﬁles results ina reduction in classiﬁer performance. To address this chal-
+lenge, a position-invariant phase matrix reconstruction solution
+is proposed. The approach introduces a location model todescribe the relationship between hand phase, rotation angles,
+and radial distances. Speciﬁcally, hand rotation angles are esti-
+mated based on the phase difference between two antennas.Using the hand’s rotation angles, a speciﬁed movement is
+performed outside the beam from the antennas to the cen-
+ter to ﬁnd the radial distance of the hand. Therefore, thelocation model enables the accurate reconstruction of thephase matrix, precisely describing the phase variation of ﬁnger
+micromovements.
+RF-Sign is implemented using a universal software radio
+peripheral (USRP) device and passive tags. Comprehensiveperformance evaluations were conducted across various posi-
+tions, encompassing different rotation angles and radial dis-
+tances. RF-Sign attains an average angle measurement error
+of 4.3
+◦and a distance measurement error of 3.24 cm.
+Additionally, the average gesture recognition accuracy sur-passes 92.81% for both metrics.
+The main contributions are summarized as follows.
+1) A novel gesture segmentation method is proposed to
+dynamically segment gestures using the reference tag
+RSS changes to determine the ﬁnger micromovements
+states. In addition, the reference tag eliminates the effectof arm micromovements when the user performs a
+gesture.
+2) A position model estimating the horizontal hand rotation
+angle and radial distance to reconstruct the ﬁnger micro-
+movements phase matrix is proposed to improve the
+ﬂexibility of RF-Sign by analyzing the effect of differenthand positions on the phase.
+3) We have built a prototype RF-Sign using USRP to
+help hearing-impaired people communicate with oth-
+ers. Extensive experiments show that RF-Sign enables
+accurate and robust gesture recognition with an averageaccuracy of 92.81%.
+II. P
+RELIMINARIES
+In this section, we introduce the RFID basics and the
+guidelines for constructing RFID sensing planes.
+A. RF Phase and RSS
+In RFID communication, the RF signal travels back and
+forth between the antenna and the tag, passing a total dis-
+tance of 2 R. Assuming an RF carrier wave of frequency
+f(Hz), then the relationship between frequency and wavelength
+can be seen by λ=(c/f), where cis the electromagnetic
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:37:48 UTC from IEEE Xplore.  Restrictions apply. 9058 IEEE INTERNET OF THINGS JOURNAL, VOL. 11, NO. 5, 1 MARCH 2024
+Fig. 2. Reference tag deployment.
+wave speed, and in the air environment, cis the light speed
+(≈3×108m/s). In addition to the phase variation with
+distance, the reader’s transmission line and the tag’s reﬂection
+characteristics introduce additional phase errors θRandθTAG,
+respectively. Then, the relationship between phase /Phi1and
+distance can be expressed as
+/Phi1=/parenleftbigg
+2π2R
+λ+θR+θTAG/parenrightbigg
+MOD 2 π (1)
+where MOD 2 πis used to ensure the periodicity of the
+measured phase.
+The RSS of the reﬂected signal cannot be neglected and the
+effect of the signal power P(mW)is usually considered. The
+RSS can be expressed as
+RSS=10 lg P=10 lg/parenleftbiggP
+1m W/parenrightbigg
+(2)
+where RSS is generally negative and maximum 0. In the ideal
+case, the reader transmits the signal and the receiver receivesit intact.
+B. Tag Selection and Deployment
+In implementing gesture recognition, a pivotal challenge
+revolves around conﬁguring tags to capture ﬁnger micromove-ments. As a practical approach, we afﬁx the tags to our ﬁngers.
+Upon executing a gesture, each tag initiates a signal alteration,
+indicative of the movement performed.
+1) Tag Selection: There are a variety of commercial tags
+designed with different sizes and attributes. Among them,we choose NXP-7018 tags. The NXP-7018 size (73 mm ×
+21 mm) conforms to the ﬁnger geometry and has sufﬁcient
+recognition range (≈12 m). Therefore, the NXP-7018 is ideal
+for capturing ﬁnger micromovements.
+2) Reference Tag Deployment: In the introduction section,
+we introduce the concept of the reference tag’s position. In
+this section, we proceed with comparison experiments aimed at
+validating the appropriateness of the reference tag’s placement.
+Preliminary Experiment: USRP can report the channel
+parameters, i.e., RSS and phase, for each tag being queried.
+To explore the impact of the reference tag’s deployment posi-
+tion on the signal, a series of controlled experiments were
+carried out. V olunteers were engaged to perform dynamic ges-tures, and subsequently, RSS and phase data were collected for
+various tag positions.
+Sensing Ability Study: The capability to sense ﬁnger micro-
+movements is being tested. Figs. 3and4compare the phase
+and RSS for different tag locations (speciﬁcally, W1 and W2 asFig. 3. Impact of reference tag placement on phase.
+Fig. 4. Impact of reference tag placement on RSSI.
+s h o w ni nF i g . 2). It is noticeable that the phase of W1 exhibits
+more signiﬁcant ﬂuctuations than that of W2 during a steadyphase state. This observation underscores the higher stability
+of W2. Moreover, W2 stands out when the RSS changes, indi-
+cating that it maximizes the reception of the reader’s transmitsignal and performs well in detecting environmental dynamics.
+III. S
+YSTEM DESIGN
+The system encompasses several main components, as
+illustrated in Fig. 5. The key components include signal
+preprocessing modules, with the core ones involving phaseproﬁle construction, continuous gesture segmentation, and
+sign language recognition. In detail, upon receiving the time
+series signal from each marker ﬁnger, the received signalundergoes interpolation and ﬁltering to enhance smoothness.
+Subsequently, the ﬁnger micromovements are transformed into
+a phase matrix format. However, variations in hand posi-tion during similar ﬁnger micromovements might degrade
+recognition performance. Therefore, the gesture is represented
+through constructing a position-independent phase matrix.Additionally, the changing trend of the reference tag’s RSS
+is employed to segment continuous gestures, and the result-
+ing segmented phase matrix serves as a template. To ensuretemplate accuracy, matrices with outliers are eliminated empir-
+ically, and representative templates are chosen using a voting
+scoring approach. Ultimately, RF-Sign utilizes a bidirectional
+long short-term memory (Bi-LSTM) model to identify repre-
+sentative templates.
+A. Signal Preprocessing
+Interpolation: Due to the hand moving too fast or the
+antenna pitch is not reasonable (if the pitch is small, the
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:37:48 UTC from IEEE Xplore.  Restrictions apply. ZHANG et al.: RF-SIGN: POSITION-INDEPENDENT SIGN LANGUAGE RECOGNITION USING PASSIVE RFID TAGS 9059
+Fig. 5. System architecture.
+transmitted signal is directly received by the antenna, whereas
+if the pitch is large, the tag may be in the blind spot of the
+antenna to the center beam), the tag cannot reﬂect the signalin time, which brings the problem of missing measurement
+values. We need to deﬁne three variables, ﬁrst determine the
+interval number t, the interval to ensure the presence of miss-
+ing values, must meet t
+k<=t<tk+1(k=1,2,3,..., n),
+where tkandtk+1denote breakpoints. In order to make the
+local monotonicity constant, then determine a local variable λ
+and the mean difference δk, which is calculated as
+λ=t−tk (3)
+δk=θk+1−θk
+tk+1−tk(4)
+where θk+1andθkindicate the phase values corresponding to
+the current interval point and the next interval point. Finally,
+the interpolation function is deﬁned as
+F(θ)=θk+θk+1−θk
+tk+1−tk(t−tk)=θk+λδk. (5)
+Outlier Elimination: The presence of outliers within the
+phase proﬁles leads to a decline in recognition accuracy. To
+address this, the Hampel ﬁlter is employed to assess datavalidity. This involves computing the absolute deviation from
+the median, utilizing both the median and standard deviation
+within a designated window. If outliers are identiﬁed, they aresubstituted with the median value from neighboring windows.
+Noise Removal: High-frequency noise has an impact on the
+phase ﬂuctuations produced by ﬁnger micromovements. To
+mitigate this, the weighted moving average ﬁlter is utilized
+to eliminate noise by averaging data in segments.
+Illustrated in Fig. 6, a comparison is made between the
+phase proﬁle processing before and after the execution of
+a single-ﬁnger micromovement. It is evident that the absentphase values are supplemented and that outliers and high-
+frequency noise are effectively eliminated through ﬁltering.Fig. 6. Signal interpolation and smoothing.
+B. Phase Proﬁles Construction
+Factors unrelated to the environment, like the angle of
+hand rotation and radial distance (distance to the antennapair plane), have the potential to impact system performance
+detrimentally. To address this, we introduce a position model
+that captures the correlation between phase and tag position,enabling the normalization of tag positions. Furthermore, we
+employ the phase equation derived from the position model to
+reconstruct the phase matrix.
+1) Position Model: When executing identical ﬁnger micro-
+movements, we identiﬁed two distinct issues: 1) Nonuniform
+Distance Values: Theoretically, the hand’s distance from the
+antenna should exceed half a wavelength (i.e., 16.4 cm),
+causing a phase change surpassing one full cycle, thereby lead-
+ing to substantial phase errors and 2) Undetermined Angles:
+Executing the same gesture may result in varying rotationangles within the same plane, inﬂuencing the phase alteration,
+as depicted in Fig. 7.
+In the context of intricate ﬁnger micromovements, the
+precision of gesture recognition can be impacted by devi-
+ations in both angle and distance. Angle variations dictate
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:37:48 UTC from IEEE Xplore.  Restrictions apply. 9060 IEEE INTERNET OF THINGS JOURNAL, VOL. 11, NO. 5, 1 MARCH 2024
+Fig. 7. Phase versus tag rotation angle: phase value is related to the tag
+rotation angle.
+Fig. 8. Tag rotation causes the angle between the antenna and the tag to
+change.
+the hand’s horizontal displacement, while distance ﬂuctuations
+pertain to vertical shifts. This implies that angle alterationhas a direct impact on distance and, consequently, an indi-
+rect inﬂuence on phase. Thus, even when performing identical
+ﬁnger micromovements, phase alterations might differ acrossdiverse positions. Hence, the normalization of tag positions is
+imperative for accurate ﬁnger micromovement recognition.
+The proposed position model serves to illustrate the phase’s
+ﬂuctuation concerning hand angle and distance. Given that dis-
+tance estimation necessitates knowledge of the angle between
+the tag and the antenna pair plane, our initial step involves
+angle estimation. As depicted in Fig. 8, angle discrepancies
+might arise during the user’s gesture execution. Speciﬁcally,with the antennas positioned at a distance of L, the antenna
+pair’s center at O
+/prime, the initial tag’s center at O1, and the cen-
+ter point post angular deﬂection at O2. When the tag is in
+its starting position, the distances from the antenna’s phase
+center are R1andR2, respectively. Assuming Lsatisﬁes the
+condition L<<R1,R2, based on Fig. 8, it becomes apparent
+that sin β1gradually diminishes as β1transitions from 90 to 0.
+This leads to
+R1−R2≈Lsinβ1 (6)
+specifying that β1is a negative angle when the tag is rotated
+along clockwise. Since the phase difference is used to calculatethe angle of the tag, two antennas are needed to receive the
+reﬂected signal separately, so the expression of the distance
+Fig. 9. Tag is moved to the speciﬁed position, i.e., four pairs of symmetric
+points, to obtain the distance from the tag to the antenna.
+difference is
+R1−R2=λ(/Delta1φ−/Delta1φ0)
+4π(7)
+where /Delta1φis the phase difference between the two antennas,
+and/Delta1φ0is the phase error. According to (6) and (7), we can
+get
+Lsinβ1=λ(/Delta1φ−/Delta1φ0)
+4π. (8)
+When Ldecreases, /Delta1φalso decreases, but it may cause the
+antenna to fail to respond to the tag. To prevent /Delta1φ from
+exceeding one cycle, then Lsatisfy that
+L≤λ
+2s i nβ1(9)
+where Ltakes a great value at β1is(π/2)and does not exceed
+half of the wavelength.
+Then, according to (8)and(9), it can be written as
+β1=arcsin/bracketleftbiggλ
+2πL(/Delta1φ−/Delta1φ0)/bracketrightbigg
+. (10)
+Similarly, we can ﬁnd the angle β2after tag deﬂection, so the
+angle difference
+/Delta1β=/braceleftbigg|β1−β2|,Dir(β1)=Dir(β2)
+|β1+β2|,Dir(β1)/negationslash=Dir(β2)(11)
+we deﬁne Dir ()as a function to determine the current cor-
+ner direction as well as |·|is the absolute value function.
+Therefore, the current angle is recorded each time a ﬁngermicromovements is executed. Then the angle difference is
+calculated when the same type of ﬁnger micromovements is
+completed, thus ensuring the stability of the phase change.
+The phase is directly inﬂuenced by the radial distance’s
+magnitude, prompting the necessity for distance estimation.
+Speciﬁcally, the antennas’ spacing, denoted as L, is partitioned
+into eight equidistant sections using the midline at (L/2).
+Initially, the hand bearing the marker is positioned according
+to speciﬁcations, with the distance to the antenna being gauged
+at four equidistant points on each side, as illustrated in Fig. 9.
+Subsequently, a set K={k
+1,k2,..., k8}of feasible values k
+is ascertained. To establish criteria, symmetry points in pairs
+exist on either side of the boundary line. The reasonableness
+of the distance can be afﬁrmed if the distance error μof these
+pairs adheres to μ≤10−4. It is worth noting that the radial
+distance, denoted as H, facilitates tag movement within a ﬁxed
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:37:48 UTC from IEEE Xplore.  Restrictions apply. ZHANG et al.: RF-SIGN: POSITION-INDEPENDENT SIGN LANGUAGE RECOGNITION USING PASSIVE RFID TAGS 9061
+plane. Given the known values of radial distance Hand arrival
+angle β, determining the phase change further requires com-
+putation of the tag’s displacement Dwithin the same plane,
+achieved using the formula D=|s1−s2|, where s1ands2
+represent the distances from the current position to the ﬁnal
+position and are computed as follows:
+s1=H|tanβ1|,s2=H|tanβ2| (12)
+it can be seen that both s1ands2are linearly related to H. With
+the above equation, we can obtain the relationship equationbetween radial distance and moving distance
+D=H||tanβ
+1|−|tanβ2|| (13)
+where β1andβ2are in the maximum sector 2 βcorresponding
+to the reader, satisfying β1,β2∈[−β,β].
+2) Phase Matrix Reconstruction: For each completed ﬁn-
+ger micromovements, the reader receives data about time t.
+First, we construct the phase proﬁle of the ﬁve ﬁngers as an
+initialized phase matrix
+M=⎡
+⎢⎣θ11···θ51
+.........
+θ
+1t···θ5t⎤
+⎥⎦
+t×5(14)
+where θijdenote the phase value of a particular ﬁnger at a
+given moment.
+The position model’s representation of the phase-hand posi-
+tion interplay (angle and distance) necessitates accounting for
+the impact of hand angle and distance during ﬁnger micro-
+movement execution. Subsequently, as illustrated in Fig. 9,w e
+initiate the process by utilizing the initial phase φ. From there,
+we compute the phase difference /Delta1φbetween the current time
+point and the subsequent one. This computation enables us toformulate the equations that correlate /Delta1φwith the arrival angle
+β, the moving distance D, and the radial distance H
+d
+2=/radicalbig
+s22+H2=/radicalBig
+H2/parenleftbig
+tanβ22+1/parenrightbig
+(15)
+where d2signiﬁes the Euclidean distance from the tag’s center
+to the reader’s center. Similarly, we can get
+d1=/radicalBig
+(D+H|tanβ2|)2+H2. (16)
+It is important to calculate the phase change /Delta1φ=(4π/Delta1d/λ)
+for the marker point’s shift from the current position to the
+previous one, with /Delta1d=d1−d2, signifying the positive
+movement along the x-axis. Given the familiarity with the
+initial phase matrix M, we proceed to reconstruct the phase
+matrix as follows:
+M/prime=⎡
+⎢⎣θ11 ··· θ51
+.........
+/Delta1φ1,n···/Delta1φ5,n⎤
+⎥⎦
+n×5(17)
+where /Delta1φi,jrepresents the phase alteration of the ith ﬁnger
+after the time interval j. This fresh phase matrix is capable of
+capturing the delicate motions of all ﬁve ﬁngers concurrently.
+Its phase proﬁles epitomize the phase variations of each ﬁnger,
+implying that every column in the matrix denotes the phasechange of the corresponding ﬁnger when executing the gesture.C. Continuous Gesture Segmentation
+Given the lack of precision in the initial and ﬁnal positions
+of continuous gestures, two factors merit consideration: 1) theinﬂuence of arm oscillations while the hand moves and 2) the
+differentiation between stationary and moving hand actions.
+Consequently, we leverage the RSS trajectory of the referencetag to partition continuous gestures and mitigate the impact of
+tremors.
+1) Signal Error Elimination: Recognizing that the signal
+received by the antenna at the end of a gesture encom-
+passes static and dynamic components is crucial. The dynamic
+component primarily consists of the reﬂected signal result-ing from ﬁnger micromovements, while the remaining portion
+constitutes the static component, which includes phase inac-
+curacies originating from other parts of the body. The armcan be divided into two segments: the upper arm and the
+lower arm, with the latter being closer to the hand. Vibrations
+in the lower arm can lead to hand displacement. Therefore,the static component mainly emerges within the lower arm’s
+range, prompting us to select the wrist as the reference tag
+location. Since each gesture carries its own set of errors,these inconsistencies accumulate and diminish the accuracy
+of dynamic segmentation. By choosing the wrist as the ref-
+erence tag’s location, we posit that the total signal receivedby the antenna is represented as S=/summationtext
+5
+l=1Sl,d+Ss, where
+Sl,dsigniﬁes the reﬂected signal arising from all ﬁnger micro-
+movements, and Ssdenotes the reﬂected signal generated by
+arm oscillations. Consequently, when a ﬁnger micromovement
+is executed, the phase error θsis calculated and subsequently
+eliminated from the overall phase, ensuring that the processed
+phase θl,daccurately reﬂects the ﬁnger micromovements’
+state.
+2) Dynamic and Static Division: Gestures are distinguished
+through the phase matrix of ﬁnger micromovements. However,
+an issue arises in accurately identifying segmentation bound-
+aries during the execution of consecutive gestures. This chal-lenge emerges from the distinct phase alterations associated
+with various ﬁnger micromovements, rendering the use of
+empirical threshold techniques for continuous gesture segmen-tation less precise. As close proximity between ﬁnger tags
+can lead to signal interference, we introduce a reference tag
+for segmenting continuous gestures. In our methodology, weleverage the trend of the reference tag’s RSS to capture static
+and dynamic changes within the gesture. Precisely, we parti-
+tion the gesture execution process into two stages: initiation
+and stabilization. The phase matrix encapsulates phase shifts
+during ﬁnger motion. Given its central role in ﬁnger micro-movements identiﬁcation, we initiate phase proﬁle alignment
+through a differential operation on the RSS. Subsequently, we
+establish a moving window, denoted as x, with a size of 10,
+and compute the variance value encompassed by the window.
+As depicted in Fig. 10, multiple paired local wave peaks man-
+ifest, and certain irregular wave peaks emerge near spikes dueto environmental inﬂuences originating from multipath effects.
+After multiple tests and adjustments, it has been determined
+that using an empirical threshold value of Y(Y≥0.47)is rea-
+sonable. If the variance value is less than Y, then the wave is
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:37:48 UTC from IEEE Xplore.  Restrictions apply. 9062 IEEE INTERNET OF THINGS JOURNAL, VOL. 11, NO. 5, 1 MARCH 2024
+Fig. 10. Dynamic segmentation.
+seen as an outlier to be eliminated, so that only pairs of spikes
+are retained.
+Next, it is crucial to determine the beginning and end of a
+gesture. When the gesture is not started, the signal strength
+is at a plateau, once the new gesture is made, the peaks
+appear. Then, the current gesture remains unchanged so thatthe signal strength will level off again until the next new
+gesture arrives. That is, the position where the current ges-
+ture starts corresponds to the end of the smooth phase ofthe previous gesture. The positions of all starting points are
+recorded, and the phase matrices with different row widths
+are cut out by phasing the sequential gestures, as well asthe matrices expressing the same gestures, are placed in a
+setN
+i={N1,N2,..., Nn}, where ndenotes the nth gesture.
+In the robustness testing designed in Section IV,t h eR F - S i g n
+system undergoes multiple adjustments and passes the tests,
+demonstrating that the segmentation algorithm for continuous
+gestures is suitable for the current scenario.
+D. Sign Language Recognition
+In order to better distinguish between sign languages, we
+aim to select a representative phase matrix, which is a key
+condition for the successful differentiation of sign languages.
+1) Coarse-Grained Filtration: The phase matrix within a
+speciﬁc set Nis examined to assess its feasibility, gauging the
+tag’s ability to appropriately respond as the gesture is executed
+within the set N. Various factors can contribute to unrespon-
+siveness, such as tag bending, which reduces the receiving
+area, or the tag’s orientation opposing the antenna beam’s
+direction, leading to nonactivation of the internal antenna.
+2) Fine-Grained Selection: We have to consider the phases
+of speciﬁc ﬁngers in different matrices, when the phase matrix
+in the set Nis normal, but there are still phase proﬁles with
+different trends of variation, and the same kinds of sign lan-
+guages tend to show phases with similar trends of variation.
+As shown in Algorithm 1, the length of the phase proﬁle
+varies because the user is not guaranteed to execute the ges-
+ture at the same speed each time. First, set all phase proﬁles to
+the same starting point. Deﬁne variables for position recordsPOS, total score sum, and initialize them to 0. Second, the tail
+complementary zero operation is performed. Then, we willAlgorithm 1 Select a Representative Phase Matrix
+Require: Initialize all phase proﬁles in the phase matrix M/prime
+of the set N
+Initialize the variable POS=0
+Initialize the total score sum=0
+Output: representative sequences
+1:Set all phase proﬁles to the same start point
+2:Tail complementary zero operation for phase proﬁles
+3:Determine the upper boundary b1and the lower
+boundary b2
+4:Derive at each pair of boundaries bi=bi,1,bi,2and obtain
+the trend series γ
+5:Set up voting scoring rule: compare sequences γto the
+same position
+6:forPOS is less than the length of the sequence γdo
+7: ifγiandγi+1are not the same at POS then
+8: sum plus 1 and POS plus 1
+9: else
+10: sum subtract 1 and POS plus 1
+11:The total score sumof each sequence is recorded, and then
+the top Gones with high total scores are selected.
+12:return representative sequences
+determine the upper boundary b1and the lower boundary b2,
+and then derive the derivative at the boundary to obtain the
+sequence of change trends γ={γ1,γ2,...,γ n},γiis divided
+into three categories: 1) increasing (+); 2) no ﬂuctuation (_);
+and 3) decreasing (−). Finally, we propose a voting scoring
+rule, which involves comparing sequences γbetween the same
+positions POS.POS increases by 1 sequentially but does not
+exceed the length of the sequence. If the trend categories are
+the same, one point is added. Conversely, one point is sub-
+tracted. The total score sum of each sequence is recorded, and
+then the top G([n/4]≤G≤[n/2])with the highest scores is
+selected.
+3) Range Normalization: If the distance between different
+phase proﬁles is too large, then it may lead to incorrect classi-
+ﬁcation results. We set each phase proﬁle θt, where tdenotes
+time and varies in size. Then, the phase proﬁles are normalized
+for distance to the range [0, 1]
+/hatwideL=L−min(L)
+max(L)−min(L)(18)
+where /hatwideLandLare the updated and original time series, respec-
+tively, and the min ()and max ()functions are the minimum and
+maximum values in L. Thus, the phase matrix after the above
+operation is able to accurately represent its corresponding
+gesture.
+4) Bi-LSTM-Based Gesture Recognition: We use the phase
+matrix of multiple sets Nas the feature representation of sign
+language. There are two reasons why we chose Bi-LSTM.On the one hand, the recognition accuracy can be improved
+because Bi-LSTM can handle the spatiotemporal features of
+ﬁnger micromovements while considering the speed of handmovement and the user’s height. On the other hand, Bi-LSTM
+does not require a large enough data set to support the
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:37:48 UTC from IEEE Xplore.  Restrictions apply. ZHANG et al.: RF-SIGN: POSITION-INDEPENDENT SIGN LANGUAGE RECOGNITION USING PASSIVE RFID TAGS 9063
+Fig. 11. Network architecture.
+model’s training due to its uncomplicated architecture. And
+the computation time cost is low. The basic architecture ofthe classiﬁcation network within the RF-Sign system is illus-
+trated in Fig. 11. The network takes a 5-D phase matrix as
+input, and the ﬁnal scores for each ﬁnger component contributeto calculating the overall classiﬁcation score for each ges-
+ture. The classiﬁcation model comprises three hidden layers,
+encompassing the forward layer, backward layer, activationlayer, fully connected layer, and softmax layer. Notably, the
+forward and backward layers are pivotal components, both
+leveraging the LSTM model’s memory-retaining capabilitiesby propagating each phase matrix twice. This establishes a
+strong correlation between the phase characteristics of each
+ﬁnger, thereby ensuring the precision of sign language clas-
+siﬁcation. With its adeptness in learning classiﬁcation tasks,
+the Bi-LSTM enables the automatic alignment of phase pro-ﬁles of varying lengths. Consequently, accurate identiﬁcation
+of ﬁnger micromovements can be achieved during the contin-
+uous segmentation of gestures, even when dealing with phaseproﬁles of differing lengths.
+IV . S
+YSTEM EVA L UAT I O N
+In this section, we present our system implementation and
+evaluate its performance using several gestures and users.
+A. Experimental Setup and Methodology
+Experimental Setup: The experimental setup of the RF-Sign
+system consists of a dual-antenna USRP device and several
+wearable RFID tags, as shown in Fig. 12. USRP can simulate
+any signal through a signal designer, making it convenient
+for data synchronization and developing data analysis algo-
+rithms. The four-channel USRP device contains an internalX310 daughterboard and a pair of circularly polarized direc-
+tional antennas with a gain of 6.5 dBi arranged in compliance
+with the EPC C1G2 standard. The distance between RFID
+antennas is 100 cm in order to query the scanning tags. The
+USRP operates in channel hopping mode on frequency band902–920 MHz. The user wearing the RFID tag performs ﬁn-
+ger micromovements at 150 cm in front of the antenna pair.
+Speciﬁcally, RF-Sign measures the phase variations of ﬁngermicromovements, and to achieve this, a glove design is imple-
+mented. The glove is equipped with ﬁve 7018-U9 RFID wet
+Fig. 12. Experimental deployment.
+Fig. 13. Plan view of different locations.
+inlay tags that are attached to the hand. These lightweight tags
+ensure that users do not experience a sense of weight whilewearing the glove. An identical tag is attached to the wrist at
+a distance of 6 cm from them, mainly to detect environmental
+changes and abnormal arm shakes.
+Experimental Methodology: To validate the effectiveness of
+RF-Sign in recognizing ﬁnger micromovements, we design an
+experimental environment. As shown in Fig. 13, Location 1
+is represented. The layout consists of walls surrounding an
+area measuring 5.32 m in length, 2.56 m in width, and 4.33 min height. Several cardboard boxes measuring 1 m in length,
+0.5 m in width, and 0.7 m in height are placed in the cor-
+ners. A total of ten participants take part in the experiment,including seven males and three females. The age range of the
+male participants is primarily between 23 and 30 years old,
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:37:48 UTC from IEEE Xplore.  Restrictions apply. 9064 IEEE INTERNET OF THINGS JOURNAL, VOL. 11, NO. 5, 1 MARCH 2024
+(a) (b)
+Fig. 14. Evaluation of micromovement recognition results. (a) Recognition accuracy of letters and numbers. (b) Recognition accuracy of misgroups.
+with two additional participants aged 38 and 52 years old.
+The female participants are 27, 36, and 55 years old. This
+selection ensures representation across different age groups. It
+should be noted that male hands generally have larger dimen-sions compared to female hands. The distance from the wrist
+to the middle ﬁngertip ranges from 18 to 24 cm for males,
+while for females, it ranges from 14 to 17 cm. Participants
+are instructed to don gloves equipped with RFID tags and a
+wristband before executing predetermined gestures. These ges-tures encompass the complete set of 26 alphabet letters, along
+with the Arabic numerals 0–9. Each participant is required to
+replicate all these gestures ten times consecutively.
+B. Data Collection and Metrics
+To evaluate the performance of RF-Sign in ﬁnger micro-
+movements, we deﬁne four metrics.
+Data Collection: To ensure the robustness of the RF-Sign
+system, data augmentation methods are used to supplementthe data set. For hand movement speed, a resampling method
+is applied to each sign language, resulting in 21 600 new sam-
+ples. In scenarios with obstacles in the environment, whitenoise is added using the appropriate method, generating 18 000
+new samples. To address misclassiﬁed sign language groups,
+a combination of random zero-padding and moving averageﬁltering is employed to emphasize the phase variation charac-
+teristics of each sign language, creating 28 800 new samples.
+As a result, a total of 72 000 samples are generated to ensurethe adequacy of the data set.
+Metrics: For sign languages represented by ﬁnger micro-
+movements, the recognition accuracy is deﬁned as (C
+t/Ca),
+where CtandCaare the number of correctly classiﬁed ges-
+tures and executed gestures, respectively. Precision, Recall,
+and F1 score deﬁnitions, respectively
+Precision =TP
+TP+FP(19)
+Recall =TP
+TP+FN(20)F1=2×Precision ×Recall
+Precision +Recall(21)
+where TP denotes true positive, TN denotes true negative, FP
+denotes false positive, and FN denotes false negative. In par-ticular, we train a general Bi-LSTM model and then use this
+model to classify all the sign languages.
+C. Micromovement Recognition Performance
+RF-Sign shows good performance in recognition accuracy
+with an average accuracy of 92.81%. As shown in Fig. 14(a),
+the recognition rate of all letters is above 90%, the accuracy
+rate of Arabic numerals is above 92%, and the recognition
+accuracy rate of 21 out of 26 letters is above 91%. In particular,the misclassiﬁcation rate is high because the gestures indicat-
+ing the similarity between letters and Arabic numerals/letters
+can appear high. Therefore, other letters and numbers, due totheir different presentation, can be recognized correctly 100%
+of the time.
+To make RF-Sign more reliable, it is necessary to recog-
+nize the gestures with high similarity accurately. Speciﬁcally,
+we test data sets that may be misclassiﬁed. As shown in
+Table I, ten misgroups are set up, with Arabic numerals
+0–9 corresponding to similar letters. As shown in Fig. 14(b),
+RF-Sign has an accuracy of over 91.83% in all misgroups,
+with a maximum accuracy of 96%. The table shows the fol-lowing observations: for ﬁne-grained ﬁnger micromovements,
+RF-Sign considers the position of the entire hand as well
+as environmental inﬂuences for micromovement recognitionthrough phase changes.
+The confusion matrix and other evaluation metrics are cal-
+culated to evaluate the RF-Sign system better. As shown in
+Fig. 15, the depth markings on the far right of the confusion
+matrix are to see the number of correct identiﬁcations for eachsign language category. It can be seen that some of the sign
+language categories have relatively shallow depths due to the
+data set in the misgroups, using resampling and adding whitenoise to improve RF-Sign system performance. So after data
+set division, the number of misgroup validation sets is high
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:37:48 UTC from IEEE Xplore.  Restrictions apply. ZHANG et al.: RF-SIGN: POSITION-INDEPENDENT SIGN LANGUAGE RECOGNITION USING PASSIVE RFID TAGS 9065
+Fig. 15. Confusion matrix for letters and numbers.
+TABLE I
+MISGROUPS
+TABLE II
+PERFORMANCE METRICS OF RF-S IGN
+compared to other sign languages. As shown in Table II, three
+performance evaluation metrics, such as precision, recall, and
+F1 score, are calculated from the confusion matrix. RF-Sign
+system performance is good, with all of its evaluation indexesabove 92.8%.
+D. Robustness to Various Directional Deviations
+RF-Sign performs quite well in terms of recognition accu-
+racy, with an average accuracy of 91% for small deviation
+patterns and 89% for large deviation patterns. First, perform
+36 ﬁnger micromovements and measure the horizontal rota-tion angle of the hand. As shown in Fig. 16, RF-Sign exhibits
+an average angle error of 4 .3
+◦. The variability in error is
+primarily due to the speciﬁc characteristics of certain sign
+languages, such as ﬁnger crossing, which interferes with sig-
+nal transmission and leads to delayed tag responses. Next,we evaluate the effect of the directional deviation of micro-
+movements on the accuracy performance. We set the hand
+orientation deviation as no deviation (0
+◦), slight deviation
+(5◦–10◦), and signiﬁcant deviation (20◦–30◦). Fig. 17(a) plots
+the recognition accuracy under different directional deviations.Fig. 16. Angle and distance errors of ﬁnger micromovements.
+We observe that the accuracy decreases in the case of slight
+and signiﬁcant deviations, but the ﬂuctuations are not obvious.
+Because we construct a physical model that can estimate the
+angle reasonably and reconstruct the phase proﬁles so that theoriginal phase changes are maintained. The trend of the phase
+proﬁles needs to be consistent, and if deviations occur, they
+signiﬁcantly reduce their recognition accuracy.
+E. Inﬂuence of Distance Between the User and the Antenna
+RF-Sign achieves good performance in terms of recog-
+nition accuracy when the distance varies, with an average
+accuracy of 90% for RF-Sign. First, perform 36 ﬁnger micro-
+movements and measure the distance from the hand to theantenna. As shown in Fig. 16, RF-Sign exhibits an average dis-
+tance error of 3.24 cm. Next, we evaluate the activity range
+of the tag from 0.6 to 1.5 m from the antenna and discussthe effect of the position of every 30 cm within the activity
+range on the recognition accuracy. Fig. 17(b) plots the recog-
+nition accuracy at different distances. We ﬁnd that the accuracytends to decrease with increasing distance, speciﬁcally because
+the backscatter communication becomes weak at too great a
+distance. However, our models use average taking in radialdistance estimation to reduce the error and are able to recon-
+struct the phase proﬁles to maintain the phase variation trend.
+As a result, the accuracy remains stable at more than 85%.
+F . Robustness to Various Movement Speeds
+RF-Sign performs quite well in terms of recognition accu-
+racy, with an average accuracy of 89% in high-speed mode,92% in medium-speed mode, and 95% in low-speed mode. We
+set the duration of ﬁnger micromovements to three different
+levels, i.e., high speed (0.5–0.7 s), medium speed (1–1.5 s),and low speed (2–3 s). Fig. 18plots the recognition accuracy
+at different moving speeds. Most of the extracted phase pro-
+ﬁles are at low to medium speeds. Since the sampling rate
+is the same, the speed of hand movement is inversely pro-
+portional to the length of the phase curve. Therefore, we useresampling to compensate for the effect of hand velocity on
+the phase before training the model in order to improve the
+accuracy of the model. While accuracy decreases slightly athigh speeds, the performance degradation is mainly due to the
+tag’s inability to respond promptly.
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:37:48 UTC from IEEE Xplore.  Restrictions apply. 9066 IEEE INTERNET OF THINGS JOURNAL, VOL. 11, NO. 5, 1 MARCH 2024
+(a) (b)
+Fig. 17. Recognition accuracy with various directional deviations and various distances. (a) Recognition accuracy of various directional deviati ons.
+(b) Recognition accuracy of various distances.
+Fig. 18. Recognition accuracy for different movement speeds.
+Fig. 19. Phase error of different NLOS environments.
+G. Obstacles in the NLOS Environment
+RF-Sign can still accurately track gestures in the non-
+line-of-sight (NLOS) environment. In practical applicationscenarios, there may be different numbers of obstacles that
+block the line-of-sight (LOS) path between the user and
+the RFID antenna. Therefore, it is essential to study the
+performance of RF-Sign in these NLOS environments. In par-
+ticular, we investigate the variation of phase measurementswhen different numbers of obstacles block the LOS path. The
+number of obstacles is set to 1–3 and placed parallel. As
+s h o w ni nF i g . 19, we ﬁnd that the phase decreases when the
+number of obstacles increases. This means that RF-Sign can
+work in something like free space, even if obstacles blockthe LOS path, but vision-based methods cannot work in this
+case.
+Different sizes of obstacles obstruct the LOS path between
+the hand and the antenna. First, we investigate the phasemeasurement variations when the LOS path is obstructed by
+obstacles of different sizes. In the experimental setup, the dis-
+tance between the antennas is 100 cm. To ensure the normal
+response of the tags in most cases, the dimensions of the
+obstacles should be smaller than 100 cm. Square cardboardsheets are used as obstacles with side lengths ranging from
+20, 50, to 80 cm. As shown in Fig. 20(a), the phase measure-
+ment decreases gradually as the side length range increases,but the difference is not signiﬁcant. Next, we discuss the
+impact of obstacle size on recognition accuracy. Fig. 20(b)
+presents the recognition accuracy for different obstacle sizes.It is found that the accuracy tends to degrade with increasing
+obstacle edge length, mainly because backscatter communica-
+tions cause missing values under NLOS paths. However, theRF-Sign system utilizes signal interpolation to reduce errors
+and maintain the trend of phase variations. As a result, the
+accuracy remains stable at over 88%.
+Different types of obstacles obstruct the LOS path between
+the hand and the antenna. First, we investigate the phase
+measurement variations when different types of obstacles (as
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:37:48 UTC from IEEE Xplore.  Restrictions apply. ZHANG et al.: RF-SIGN: POSITION-INDEPENDENT SIGN LANGUAGE RECOGNITION USING PASSIVE RFID TAGS 9067
+(a) (b)
+Fig. 20. Phase measurement and recognition accuracy for different obstacle sizes. (a) Phase measurement of different-sized obstacles. (b) Recogni tion
+accuracy of different-sized obstacles.
+(a) (b)
+Fig. 21. Phase measurement and recognition accuracy for different obstacle materials. (a) Phase measurements for obstacles of different materials .
+(b) Recognition accuracy for obstacles of different materials.
+s h o w ni nF i g . 22, there are wooden board, glass, book, and
+iron box) are placed along the LOS path. As shown in
+Fig. 21(a), the phase measurements for books and glass differ
+by less than 0.53 radians compared to free space, while thephase values for wooden boards and iron boxes remain almost
+unchanged. Next, we evaluate the recognition accuracy of
+the RF-Sign system when books and glass obstruct the LOSpath. As depicted in Fig. 21(b), it can be observed that due
+to the impact of multipath effects, the recognition accuracy
+for these two types of obstacles is slightly lower than in freespace. However, the RF-Sign system performs well in NLOS
+paths, as the multipath effects caused by obstacles are miti-
+gated through the computation of phase differences from ﬁngermicromovements and the use of moving average ﬁlters.
+H. Recognition Delays
+RF-Sign achieves good performance in recognizing latency.
+The average delay for RF-Sign is 289.7 ms. As shown in
+Table III, we evaluated ﬁnger micromovements recognition
+delays, including time delays in data transmission, signal pre-
+processing, phase proﬁles construction, continuous gesture
+Fig. 22. Different types of obstacles.
+segmentation, and sign language recognition, for the differentprocessing steps mentioned above. Relatively high time delays
+are observed for phase proﬁle construction and continuousgesture segmentation because the length of everyday commu-
+nication utterances determines the time of the segmentation
+algorithms, and estimating radial distances, angles, and rel-ative horizontal distances creates time-consuming problems.
+However, the average latency of each step is less than 73.7 ms.
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:37:48 UTC from IEEE Xplore.  Restrictions apply. 9068 IEEE INTERNET OF THINGS JOURNAL, VOL. 11, NO. 5, 1 MARCH 2024
+Fig. 23. Recognition accuracy for different hand sizes.
+TABLE III
+TIMEDELAY FOR DIFFERENT PROCESSING STEPS
+This is quite low for conventional applications, since micro-
+movements of the ﬁngers usually last 1–3 s.
+I. Robustness to User Hand Shapes
+In terms of different hand shapes, RF-Sign performs remark-
+ably well in recognition accuracy, with an average accuracy
+of over 91.33%. We consider ﬁve different hand sizes, rang-ing from 14.3 to 24.8 cm in wrist-to-middle-ﬁnger distance.
+Among them, the hand sizes of females (ﬁrst two sizes) are
+generally smaller and more slender compared to males. Weuse the sizes of these ﬁve hands as our training data set to
+train the model. Then, we collect a new data set to serve as
+the test set, which includes three hand sizes: 17.5, 18.4, and23.6 cm. As shown in Fig. 23, the results indicate that dif-
+ferent hand shapes have minimal impact on the recognition
+accuracy. This is because the communication between RFID
+tags and antennas is not affected by the size of the ﬁngers, as
+the size of RFID tags remains unchanged.
+J. Effectiveness Against Different Environmental Conditions
+In various environmental conditions, as shown in Fig. 23,
+we consider four scenarios. The data set collected at
+Location 1 is used to train the model, while the other locations
+are used to test the model’s cross-environment performance.
+We recollect data sets at Locations 2–4 to assess the model’s
+robustness. As depicted in Fig. 24, RF-Sign exhibits the lowest
+accuracy at Location 4. This is due to the stronger multipath
+reﬂections from nearby objects such as tables, chairs, and
+walls. However, RF-Sign effectively calculates the tag’s phasevariations and mitigates the multipath effects by using a
+moving average ﬁlter to smooth the phase proﬁle. As a result,Fig. 24. Impact of different locations on recognition accuracy.
+the accuracy at the three locations remains relatively consis-
+tent. These results demonstrate the effectiveness of RF-Signin resisting environmental interference.
+V. L
+IMITATION AND DISCUSSION
+In this section, we discuss practical issues related to the
+application of RF-Sign.
+Distance From Antenna Plane: RF-Sign excels in captur-
+ing ﬁne-grained micromovements similar to a glove device.
+However, it has a soft limitation on the distance between
+the user’s hand and the antenna plane. When this distanceis within 150 cm, the RF-Sign system demonstrates excel-
+lent performance. Beyond this range, the accuracy decreases
+as the distance increases. This limitation arises because pas-sive tags operate without an external power source and rely
+on the energy from the RF waves emitted by the antenna.
+When users move farther away from the antenna plane, the
+internal antennas of the tags may not receive sufﬁcient power
+for precise and detailed hand gesture perception. To addressthis, our future work includes advancing RF-Sign’s hardware
+and signal processing algorithms to overcome this constraint.
+Ability to Segment Continuous Gestures: The segmentation
+algorithm of RF-Sign exhibits varying accuracy for different
+sign languages. Speciﬁcally, we are conducting 20 random
+combinations of letters or numbers from the misclassiﬁcationgroups (as shown in Table Iin Section IV-C ) as they rep-
+resent multiple sign language classes. To better describe the
+ability to segment continuous gestures, we are calculating theaccuracy based on the ﬁve samples before and after the correct
+segmentation point as an error. As shown in Table IV, the aver-
+age segmentation accuracy for these ten groups is relativelyconsistent, but it does not reach the level of precise segmen-
+tation. This is because fast hand movements may result in
+insufﬁcient sampling, causing misalignment between the seg-mented RSS and phase. Thus, one of our future works is to
+optimize RF-Sign’s system parameters, such as reducing the
+communication time for each tag, to alleviate this issue.
+User Convenience: For the current users, wearing a glove-
+like device to perform sign language communication maycause frustration or reluctance. The reason is that glove devices
+may not ﬁt all hand sizes, leading to discomfort during
+prolonged usage. Therefore, we are exploring a potential direc-tion to address this issue in the future, where sign language
+recognition does not require wearing any device.
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:37:48 UTC from IEEE Xplore.  Restrictions apply. ZHANG et al.: RF-SIGN: POSITION-INDEPENDENT SIGN LANGUAGE RECOGNITION USING PASSIVE RFID TAGS 9069
+TABLE IV
+AVERAGE SEGMENTATION ACCURACY OF RF-S IGN
+VI. R ELATED WORK
+Existing research on gesture recognition can be divided into
+three main categories: CV-based, motion sensor-based, and
+wireless signal-based approaches.
+CV-Based: The image captured by the recording device
+enables static gesture recognition, while the video enables
+dynamic gesture recognition. Therefore, hand gesture recogni-
+tion has a great development in the direction of CV . Previousworks have studied static gestures [1],[26], Störring et al. [26]
+proposed a lookup table-based color segmentation and fast
+gesture recognition method, but the user lacks interactiveexperience. Currently, more attention is paid to dynamic
+gesture recognition in other works [2],[27]. Kýlýboz and
+Güdükbay [2]used a position tracker containing six degrees
+of freedom to collect trajectory data and represent the gestures
+as a 2-D sequence of ordered directional movements. Theseefforts have common problems: they tend to compromise user
+privacy and greatly reduce the accuracy of gesture recogni-
+tion in lightless conditions. RF-Sign relies on RF equipmentthat can overcome these difﬁculties and maintain high signal
+quality in both LOS and NLOS channel environments. In addi-
+tion, it also shows good performance in coarse and ﬁne particlesize.
+Motion Sensor-Based: The multimodal characteristics of the
+accelerometer and gyroscope readings and EMG signals [7],
+[8],[9],[10],[11] built into the smartwatch allow for good
+detection of hand motion. For example, Kim et al. [28]
+proposed an efﬁcient hand gesture recognition (HGR) algo-rithm that processes time-dependent data from inertial mea-
+surement unit (IMU) sensors. However, most of the sensors
+of wearable devices can determine coarse-grained motion, sothey are not effective for ﬁne-grained motion detection. In
+addition, special sensor devices developed by individuals can
+recognize some of the sign languages and letters and consider
+certain problems in terms of reliability and usability, i.e., the
+limitation of battery life and the possible poor user experi-ence [29]. Considering the above system issues, RF-Sign aims
+to track ﬁne-grained hand movements by applying RFID tags
+to individual ﬁngers. In addition, the price of the tag is verylow as well as the passive induction type, so there is no need
+to consider its limited lifetime.Wireless Signal-Based: Since wireless signals are prevalent
+in everyday life, gesture recognition has been increasinglystudied. For example, radar, WiFi, and acoustic technologies
+are heavily investigated for gesture recognition [12],[13],[14],
+[18],[30],[31],[32]. However, these solutions either struggle
+to perceive ﬁne-grained gestures or fail to resist environmen-
+tal noise interference. Wiﬁnger [18] perceives and identiﬁes
+subtle movements of ﬁnger gestures by examining the uniquepatterns exhibited in detailed channel state information (CSI).
+Recently, RFID-based hand tracking studies [15],[19],[21],
+[22],[23],[24],[33],[33],[34],[35] are increasing, so sens-
+ing hand motion has become a major trend. GRﬁd
+[19]
+proposed that RFID phase information can capture the spatial
+characteristics of various gestures with low-cost commodity
+hardware. Zhao et al. [36] extracted gesture-discriminative,
+user-independent, environment-independent, and deployment-independent features from RFID signals using carefully
+designed signal processing and adversarial learning. However,
+these methods do not take into account the effect of rotationangle on the RFID signal, as well as the inability to cap-
+ture ﬁne-grained ﬁnger micromovements. Xie et al. [16] made
+3-D modeling of large-range and small-range movements toimprove the matching resolution, but arrange a more signiﬁ-
+cant number of antennas. RF-Sign simulates the variation of
+tag rotation angle and tag distance to dual antennas on phaseby constructing a position model, and designing novel meth-
+ods to cut continuous gestures, so our method is more robust
+and challenging.
+VII. C
+ONCLUSION
+In this article, we present RF-Sign, a system that uses RF
+signals to capture multiple ﬁnger micromovements simultane-ously. It uses USRP and passive tags. We propose a position-
+independent ﬁnger micromovements recognition method. The
+implementation of RF-Sign was executed utilizing a USRPsystem. Subsequent performance evaluations were carried out
+in a real-world setting, yielding an average accuracy rate of
+92.81% across 36 different ﬁnger micromovement types.
+R
+EFERENCES
+[1] P. Das, T. Ahmed, and M. F. Ali, “Static hand gesture recognition for
+American sign language using deep convolutional neural network,” inProc. IEEE Reg. 10 Symp. (TENSYMP) , 2020, pp. 1762–1765.
+[2] N. Ç. Kılıboz, and U. Güdükbay, “A hand gesture recognition technique
+for human–computer interaction,” J. Vis. Commun. Image Represent. ,
+vol. 28, pp. 97–104, Apr. 2015.
+[3] B. Zhou, Y . Li, and J. Wan, “Regional attention with architecture-rebuilt
+3D network for RGB-D gesture recognition,” in Proc. AAAI Conf. Artif.
+Intell. , 2021, pp. 3563–3571.
+[4] C. Li, X. Zhang, L. Liao, L. Jin, and W. Yang, “Skeleton-based ges-
+ture recognition using several fully connected layers with path signature
+features and temporal transformer module,” in Proc. AAAI Conf. Artif.
+Intell. , 2019, pp. 8585–8593.
+[5] C. Zhu, J. Yang, Z. Shao, and C. Liu, “Vision based hand gesture recog-
+nition using 3D shape context,” IEEE/CAA J. Automatica Sinica ,v o l .8 ,
+no. 9, pp. 1600–1613, Sep. 2019.
+[6] C. N. Nyaga and R. D. Wario, “Sign language gesture recognition
+through computer vision,” in Proc. IST-Africa Week Conf. , 2018, pp. 1–8.
+[7] T.-Y . Pan, W.-L. Tsai, C.-Y . Chang, C.-W. Yeh, and M.-C. Hu, “A
+hierarchical hand gesture recognition framework for sports refereetraining-based EMG and accelerometer sensors,” IEEE Trans. Cybern. ,
+vol. 52, no. 5, pp. 3172–3183, May 2022. [Online]. Available: http://dx.
+doi.org/10.1109/TCYB.2020.3007173
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:37:48 UTC from IEEE Xplore.  Restrictions apply. 9070 IEEE INTERNET OF THINGS JOURNAL, VOL. 11, NO. 5, 1 MARCH 2024
+[8] Z. Yu, J. Zhao, Y . Wang, L. He, and S. Wang, “Surface EMG-
+based instantaneous hand gesture recognition using convolutional neuralnetwork with the transfer learning method,” Sensors , vol. 21, no. 7,
+p. 2540, 2021.
+[9] V . Shanmuganathan, H. R. Yesudhas, M. S. Khan, M. Khari, and A.
+H. Gandomi, “R-CNN and wavelet feature extraction for hand gesturerecognition with EMG signals,” Neural Comput. Appl. , vol. 32, no. 21,
+pp. 16723–16736, 2020. [Online]. Available: http://dx.doi.org/10.1007/
+s00521-020-05349-w
+[10] V . Becker, L. Fessler, and G. Sörös, “GestEar: Combining audio and
+motion sensing for gesture recognition on smartwatches,” in Proc. ACM
+Int. Symp. Wearable Comput. , 2019, pp. 10–19.
+[11] V . A. Shanthakumar, C. Peng, J. Hansberger, L. Cao, S. Meacham,
+and V . Blakely, “Design and evaluation of a hand gesture recogni-tion approach for real-time interactions,” Multime. Tools Appl. , vol. 79,
+pp. 17707–17730, Feb. 2020.
+[12] S. Z. Gurbuz et al., “American sign language recognition using
+RF sensing,” IEEE Sensors J. , vol. 21, no. 3, pp. 3763–3775,
+Feb. 2020.
+[13] D. Jiang, M. Li, and C. Xu, “WiGAN: A WiFi based gesture recognition
+system with GANs,” Sensors , vol. 20, no. 17, p. 4757, 2020.
+[14] Q. Bu, G. Yang, X. Ming, T. Zhang, J. Feng, and J. Zhang, “Deep trans-
+fer learning for gesture recognition with WiFi signals,” Pers. Ubiquitous
+Comput. , vol. 26, no. 3, pp. 543–554, 2022. [Online]. Available: https://
+doi.org/10.1007/s00779-019-01360-8
+[15] C. Wang et al., “Multi-touch in the air: Device-free ﬁnger tracking and
+gesture recognition via COTS RFID,” in Proc. IEEE INFOCOM-IEEE
+Conf. Comput. Commun. , 2018, pp. 1691–1699.
+[16] L. Xie, C. Wang, A. X. Liu, J. Sun, and S. Lu, “Multi-
+touch in the air: Concurrent micromovement recognition using RF
+signals,” IEEE/ACM Trans. Netw. , vol. 26, no. 1, pp. 231–244,
+Feb. 2018.
+[17] S. Zhang, C. Yang, X. Kui, J. Wang, X. Liu, and S. Guo, “ReActor:
+Real-time and accurate contactless gesture recognition with RFID,” in
+Proc. 16th Annu. IEEE Int. Conf. Sens., Commun., Netw. (SECON) ,
+2019, pp. 1–9.
+[18] S. Tan and J. Yang, “WiFinger: Leveraging commodity WiFi for ﬁne-
+grained ﬁnger gesture recognition,” in Proc. 17th ACM Int. Symp. Mobile
+Ad Hoc Netw. Comput. , 2016, pp. 201–210.
+[19] Y . Zou, J. Xiao, J. Han, K. Wu, Y . Li, and L. M. Ni, “GRﬁd:
+A device-free RFID-based gesture recognition system,” IEEE Trans.
+Mobile Comput. , vol. 16, no. 2, pp. 381–393, Feb. 2017.
+[20] Z. Chen, P. Yang, J. Xiong, Y . Feng, and X.-Y . Li, “TagRay: Contactless
+sensing and tracking of mobile objects using COTS RFID devices,” inProc. IEEE Conf. Comput. Commun. , 2020, pp. 307–316.
+[21] C. Dian, D. Wang, Q. Zhang, R. Zhao, and Y . Yu, “Towards
+domain-independent complex and ﬁne-grained gesture recognition
+with RFID,” Proc. ACM Human–Comput. Interact. , vol. 4, pp. 1–22,
+Nov. 2020.
+[22] H. Ding et al., “RFIPad: Enabling cost-efﬁcient and device-free in-air
+handwriting using passive tags,” in Proc. IEEE 37th Int. Conf. Distr.
+Com. Syst. (ICDCS) , 2017, pp. 447–457.
+[23] L. Yao et al., “Compressive representation for device-free activity recog-
+nition with passive RFID signal strength,” IEEE Trans. Mobile Comput. ,
+vol. 17, no. 2, pp. 293–306, Feb. 2017.
+[24] H. He et al., “ClothFace: A batteryless RFID-based textile plat-
+form for handwriting recognition,” Sensors , vol. 20, no. 17, p. 4878,
+2020.
+[25] L. Kriara, M. Alsup, G. Corbellini, M. Trotter, J. D. Grifﬁn, and
+S. Mangold, “RFID Shakables: Pairing radio-frequency identiﬁcationtags with the help of gesture recognition,” in Proc. 9th ACM Conf.
+Emerg. Netw. Exp. technol. , 2013, pp. 327–332.
+[26] M. Störring, T. B. Moeslund, Y . Liu, and E. Granum, “Computer
+vision-based gesture recognition for an augmented reality interface,” inProc. 4th IASTED Int. Conf. Vis., Imag., Image Process. , 2004,
+pp. 766–771.
+[27] Y . Liu et al., “Dynamic gesture recognition algorithm based on 3D
+convolutional neural network,” Comput. Intell. Neurosci. , Aug. 2021,
+Art. no. 4828102.
+[28] M. Kim, J. Cho, S. Lee, and Y . Jung, “IMU sensor-based hand gesture
+recognition for human–machine interfaces,” Sensors , vol. 19, no. 18,
+p. 3827, 2019.
+[29] A. B. Jani, N. A. Kotak, and A. K. Roy, “Sensor based hand gesture
+recognition system for English alphabets used in sign language of deaf-mute people,” in Proc. IEEE SENSORS , 2018, pp. 1–4.
+[30] M. A. A. Al-Qaness and F. Li, “WiGer: WiFi-based gesture recognition
+system,” ISPRS Int. J. Geo-Inf. , vol. 5, no. 6, p. 92, 2016.[31] H. Abdelnasser, M. Youssef, and K. A. Harras, “WiGest: A ubiquitous
+WiFi-based gesture recognition system,” in Proc. IEEE Conf. Comput.
+Commun. (INFOCOM) , 2015, pp. 1472–1480.
+[32] P. Wang, R. Jiang, and C. Liu, “Amaging: Acoustic hand imaging
+for self-adaptive gesture recognition,” in Proc. IEEE Conf. Comput.
+Commun. , 2022, pp. 80–89.
+[33] R. Parada, K. Nur, J. Melià-Seguí, and R. Pous, “Smart surface: RFID-
+based gesture recognition using k-means algorithm,” in Proc. 12th Int.
+Conf. Intell. Environ. (IE) , 2016, pp. 111–118.
+[34] X. Fan, W. Gong, and J. Liu, “TagFree activity identiﬁcation with
+RFIDs,” Proc. ACM Interact., Mobile, Wearable Ubiquitous Technol. ,
+vol. 2, no. 1, pp. 1–23, 2018.
+[35] Y . Bu et al., “RF-Dial: Rigid motion tracking and touch gesture detection
+for interaction via RFID tags,” IEEE Trans. Mobile Comput. , vol. 21,
+no. 3, pp. 1061–1080, Mar. 2020.
+[36] R. Zhao, Q. Zhang, D. Cao, Z. Sheng, and D. Wang, “Gesture recogni-
+tion with RFID: An experimental study,” CCF Trans. Pervasive Comput.
+Interact. , vol. 3, pp. 397–412, Nov. 2021.
+Haotian Zhang received the B.S. degree from
+Qingdao University of Science and Technology,Qingdao, China, in 2021. He is currently pursuing
+the master’s degree with the School of Computer
+Science and Technology, Ocean University of China,Qingdao.
+His main research interests include RFID system
+and wireless sensing.
+Lukun Wang (Senior Member, IEEE) received the
+B.S. degree from Shandong University of Science
+and Technology, Qingdao, China, in 2006, the
+M.S. degree from Dalian University of Technology,Dalian, China, in 2009, and the Ph.D. degree from
+Ocean University of China, Qingdao, in 2016.
+He is currently working as an Associate
+Professor with Shandong University of Science andTechnology, where he is also the Head of the
+Computer Vision and Pattern Recognition Team, and
+the specially invited reviewer of IEEE. His main
+research ﬁelds include artiﬁcial intelligence, big data, Internet of Things,machine learning, and information security. He has many years of expe-
+rience in scientiﬁc research and engineering technology, innovation, and
+entrepreneurship.
+Jiaming Pei received the B.S. degree in information
+system and information management from Taizhou
+University, Taizhou, China, in June 2021. He is cur-
+rently pursuing the postgraduate degree with TheUniversity of Sydney, Sydney, NSW, Australia.
+From July 2021 to June 2022, he visited the
+Southwestern University of Finance and Economics,Chengdu, China. He has also published andworked on some papers in the refereed jour-
+nals, such as Neural Computing and Applications ,
+Information Processing and Management , IEEE
+T
+RANSACTIONS ON INTELLIGENT TRANSPORTATION SYSTEMS , and IEEE
+TRANSACTIONS ON NETWORK SCIENCE AND ENGINEERING . His research
+interests include the application of data mining and computer science.
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:37:48 UTC from IEEE Xplore.  Restrictions apply. ZHANG et al.: RF-SIGN: POSITION-INDEPENDENT SIGN LANGUAGE RECOGNITION USING PASSIVE RFID TAGS 9071
+Feng Lyu (Senior Member, IEEE) received the B.S.
+degree in software engineering from Central SouthUniversity, Changsha, China, in 2013, and the Ph.D.degree from the Department of Computer Science
+and Engineering, Shanghai Jiao Tong University,
+Shanghai, China, in 2018.
+From September 2018 to December 2019 and
+from October 2016 to October 2017, he worked as
+a Postdoctoral Fellow and was a visiting Ph.D. stu-
+dent with the BBCR Group, Department of Electricaland Computer Engineering, University of Waterloo,
+Waterloo, ON, Canada. He is currently a Professor with the School of
+Computer Science and Engineering, Central South University. His researchinterests include vehicular networks, beyond 5G networks, big data measure-ment and application design, and edge computing.
+Prof. Lyu is the recipient of the Best Paper Award of IEEE ICC 2019. He
+currently serves as an Associate Editor for IEEE S
+YSTEMS JOURNAL and
+a Leading Guest Editor for Peer-to-Peer Networking and Applications ,a n d
+served as a TPC member for many international conferences. He is a mem-
+ber of the IEEE Computer Society, Communication Society, and Vehicular
+Technology Society.
+Minglu Li (Fellow, IEEE) received the Ph.D. degree
+in computer software from Shanghai Jiao Tong
+University, Shanghai, China, in 1996.
+He is currently a Distinguished Professor with
+the College of Mathematics and Computer Science,
+Zhejiang Normal University, Jinhua, China, and a
+Professor with the Department of Computer Scienceand Engineering, Shanghai Jiao Tong University. Hehas published more than 350 articles in academic
+journals and international conferences. His research
+interests include vehicular networks, big data, cloud
+computing, grid computing, and wireless sensor networks.
+Prof. Li served as a PC Member for more than 50 international confer-
+ences, including IEEE INFOCOM from 2009 to 2016 and IEEE CCGrid in
+2008. He also served as the General Co-Chair for IEEE SCC, IEEE CCGrid,IEEE ICPADS, and IEEE IPDPS, and the Vice Chair for IEEE INFOCOM.He was the Chairman of Technical Committee on Services Computing from
+2004 to 2016, Technical Committee on Distributed Processing from 2005 to
+2017, and the IEEE Computer Society in Great China Region.
+Chao Liu (Member, IEEE) received the B.S. degree
+from the Ocean University of China, Qingdao,China, in 2011, the ﬁrst Ph.D. degree from theIllinois Institute of Technology, Chicago, IL, USA,
+in 2015, and the second Ph.D. degree from the Ocean
+University of China in 2016.
+He is currently an Associate Professor with the
+Department of Computer Science and Technology,
+Ocean University of China. He is also the Chair
+of IEEE Std 1851-2023 and the Vice Chair of ISO21851-2020. He has authored or coauthored more
+than 50 papers in international journals and conference proceedings, such as
+the IEEE INFOCOM, the IEEE T
+RANSACTIONS ON IMAGE PROCESSING ,
+the IEEE T RANSACTIONS ON INDUSTRIAL INFORMATICS , and the IEEE
+TRANSACTIONS ON CIRCUITS AND SYSTEMS FOR VIDEO TECHNOLOGY .
+His main research interests include acoustic sensing, mobile computing, and
+wireless sensor networks.
+Dr. Liu is a member of ACM.
+Authorized licensed use limited to: Zhejiang University. Downloaded on August 15,2025 at 23:37:48 UTC from IEEE Xplore.  Restrictions apply. 

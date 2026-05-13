@@ -1,0 +1,926 @@
+An ExpertSystem for Indian Sign LanguageRecognition
+Using SpatialAttention–based Feature andTemporal
+Feature
+SOUMEN DAS ,SAROJ KR. BISWAS ,a n dBISWAJIT PURKAYASTHA ,National Institute of
+Technology Silchar,Silchar, India
+Sign Language (SL) is the only means of communication for the hearing-impaired people. Normal people
+have difficulty understanding SL, resulting in a communication barrier between hearing impaired people
+and hearing community. However, the Sign Language Recognition System (SLRS) has helped to bridge
+the communication gap. Many SLRs are proposed for recognizing SL; however, a limited number of works
+are reported for Indian Sign Language (ISL). Most of the existing SLRS focus on global features other than
+the Region of Interest (ROI). Focusing more on the hand region and extracting local features from the ROI
+improves system accuracy. The attention mechanism is a widely used technique for emphasizing the ROI.
+However, only a few SLRS used the attention method. They employed the Convolution Block Attention
+ModuleandtemporalattentionbutSpatialAttention(SA)isnotutilizedinpreviousSLRS.Therefore,anovel
+SA based SLRS named Spatial Attention-based Sign Language Recognition Module (SASLRM) is proposed
+to recognize ISL words for emergency situations. SASLRM recognizes ISL words by combining convolution
+features from a pretrained VGG-19 model and attention features from a SA module. The proposed model
+accomplishedanaverageaccuracyof95.627%ontheISLdataset.TheproposedSASLRMisfurthervalidated
+on LSA64, WLASL, and Cambridge Hand Gesture Recognition datasets where, the proposed model reached
+anaccuracyof97.84%,98.86%,and98.22%,respectively.Theresultsindicatetheeffectivenessoftheproposed
+SLRS incomparisonwiththeexistingSLRS.
+CCSConcepts:• Human-centeredcomputing →Usermodels;
+Additional Key Words and Phrases: Indian sign language, dynamic gestures, spatial attention, transfer
+learning
+ACM Reference Format:
+Soumen Das, Saroj Kr. Biswas, and Biswajit Purkayastha. 2024. An Expert System for Indian Sign Language
+Recognition Using Spatial Attention–based Feature and Temporal Feature. ACM Trans. Asian Low-Resour.
+Lang. Inf.Process. 23, 3,Article 37(March 2024), 23pages. https://doi.org/10.1145/3643824
+1 INTRODUCTION
+Sign Language (SL) is the only means of communication for hearing-impaired people. Accord-
+ingtotheWorldHealthOrganization,approximately63millionIndiansarehearingimpaired[ 16].
+However,veryfewpeoplearewelltrainedorcanunderstandSL,whichcreatesacommunication
+barrier between the hearing and deaf community. Employing a human interpreter is a traditional
+Authors’address:S.Das,S.Kr.Biswas,andB.Purkayastha,NationalInstituteofTechnologySilchar,Silchar,Assam,India,
+788010;e-mails:soumen_rs@cse.nits.ac.in, saroj@cse.nits.ac.in,biswajit@nits.ac.in.
+Permission to make digital or hard copies of all or part of this work for personal or classroom use is granted without fee
+provided that copies are not made or distributed for profit or commercial advantage and that copies bear this notice and
+the full citation on the first page. Copyrights for components of this work owned by others than the author(s) must be
+honored.Abstractingwithcreditispermitted.Tocopyotherwise,orrepublish,topostonserversortoredistributetolists,
+requires prior specific permission and/or a fee.Request permissions from permissions@acm.org .
+© 2024Copyrightheld bytheowner/author(s). Publicationrights licensed toACM.
+ACM 2375-4699/2024/03-ART37
+https://doi.org/10.1145/3643824
+ACM Trans. Asian Low-Resour. Lang.Inf.Process., Vol. 23,No. 3,Article37.Publicationdate:March 2024.
+37:2 S.Das et al.
+approach to resolving this issue. However, well-trained professional human interpreters are not
+easily available, and they are not cost-effective. Besides these, signer need to compromise confi-
+dentiality.Therefore, SignLanguageRecognitionSystem(SLRS) canbeaneffectivechoicefor
+reducingthecommunicationbarrierbetweenthetwocommunities.TheobjectiveofanSLRSisto
+provideaplatformtofacilitatethecommunicationprocess.Sincetheearly2010s,considerablead-
+vancements have taken place in the evolution of SLRS. Nevertheless, these systems lack a unified
+standard due to the existence of numerous variations within sign language recognition tasks. In
+broadterms,thesetaskscanbecategorizedintotwomaintypes:staticanddynamicsignlanguage
+recognition, which depend on the representation of gestures. The static sign language recogni-
+tiontaskrevolvesaroundidentifyinggestureswithoutanyassociatedmotion.However,dynamic
+signlanguagerecognitioninvolvestheidentificationofgesturesthatincorporatemotion.Thedy-
+namic category can be further divided into isolated word recognition and continuous sentence
+recognition [ 13]. The state-of-the-art approach for static SL recognition has achieved remarkable
+performance.IncontrastwithstaticSLrecognitionthedynamicSLrecognitionstillanunexplored
+areaofresearchspecificallyfor IndianSignLanguage(ISL) .Dynamicsignlanguagerecognition
+operates with a video containing a series of sequential gestures, aiming to produce an output of
+eithera single wordor asequenceof words.
+Inrecenttimes,numerousSLRShavebeenintroducedtoaddressdynamicSLrecognitiontasks,
+withapredominantfocusonleveragingdeeplearningmethodologies.Recentcontributionsinthe
+realm of deep learning encompass works by Cihan et al. [ 11], Cui et al. [ 12] ,D a se ta l .[ 15], and
+Koller[29].ModerntechniquesfordynamicSLrecognitionencompasstheutilizationof Convolu-
+tionalNeuralNetworks(CNN) andtransformer-basedSLRS.AprevalentapproachwithinSLRS
+involves the application of Transfer Learning (TL) , which entails the utilization of pretrained
+CNNmodelstoclassifyindividualframesortoserveasfeatureextractors.Thisinvolvesadapting
+a model previously trained on a related task to the current context. The efficacy of this approach
+dependsonvariousstrategies,includingdeterminingthenumberoflayerstotransfer,finetune,or
+freeze.SomeexistingSLRShaveeffectivelyincorporatedTLprinciplesusingpretrainednetworks.
+Forinstance,Adithyaetal.[ 57]proposedanSLRSmodelthatemploysapretrainedGoogleNetas
+a feature extractor in conjunction with a Bi-directional Long Short-Term Memory (BiLSTM)
+network to classify ISL words in the agricultural domain. Similarly, Aparna et al. [ 7] utilized a
+InceptionV3networkforfeatureextractionandemployedastacked LongShort-TermMemory
+(LSTM)networkforclassifyingISLwords.Incontrastwiththeprevioustwoapproaches,anSLRS
+model proposed in Reference [ 58] used the features from the final convolution layer of VGG-16
+insteadofthedenselayer,becausethelastpollinglayersextractthemostsalientfeaturesfromthe
+sign frames, which consist of local information. All the aforementioned SLRS have demonstrated
+acceptableperformance.Nevertheless,theyexhibitnotablelimitations,notablyinhandlingasub-
+stantial volume of frames that often encompass redundant and extraneous data. Sign language
+videosarecharacterizedbyacontinuousstreamofframes,frequentlycapturedatahighsampling
+rate by cameras. Consequently, the elevated sampling rate results in a considerable volume of
+frames within a sign video, necessitating substantial hardware resources for processing. Further-
+more,thepresenceofredundantorirrelevantdatabetweensuccessiveframesimpairstheaccuracy
+of the system. Another problem with the exiting SLRS [ 7,57,58] is that they focus on global fea-
+tures other than focusing more on the Region of Interest (ROI) . In the case of SL frames, most
+partoftheframeconsistofbackgroundinformationandasmallpartcoversthehandregion.Thus,
+focusingmoreonthehandregionandextractinglocalfeaturesfromtheROIcanincreasetheper-
+formance of the system. Therefore, an SLRS named Spatial Attention-based Sign Language
+Recognition Module (SASLRM) is proposed in this article to address the aforementioned is-
+sues.SASLRMincorporatesanovelarchitecturethatusesa HistogramDifference–(HD) based
+ACMTrans. Asian Low-Resour. Lang.Inf.Process., Vol.23,No. 3,Article 37.Publicationdate:March 2024.An ExpertSystem forISL Recognition Using Spatial Attention-based Feature 37:3
+keyframe selection module and Convolution with Spatial Attention (CSA) module. In addi-
+tion,theproposedmodelusesaBiLSTMnetworktoincorporatetemporalfeaturesforclassifying
+the sign words. The keyframe selection module resolves the problem of excessive processing by
+eliminating redundant or useless frames. The CSA module extracts features from the keyframes,
+in which convolution along with Spatial Attention (SA) extract salient local features. SASLRM
+uses the last pooling layer of VGG-19 as a convolution base, which has a higher discriminability
+andisfasterindeeplearningmodeltrainingtasks[ 31,52].Atthesametime,theattentionmodule
+as deep layer assists in capturing the spatial relationship during the training process for better
+discrimination.Themain contributionsof thisproposedworkare asfollows:
+—A novel SLRS by combining VGG-19 and SA module. Since the proposed model uses the
+featuresfromthelastconvolutionlayerwithaSAmodule,itcancapturemoresalientlocal
+featuresfromsign frames.
+—A Histogram Difference based keyframe selection technique that eliminates redundant and
+uselessframes,whichenhancetheeffectivenessof theproposedmodel.
+Therestofthearticleisorganisedasfollows.Section 2presentsrelatedworkforSLrecognition.
+Section3discusses the proposed methodology for ISL recognition task. Section 4presents the
+experimental analysis.Finally, Section 5concludesthearticle.
+2 RELATEDWORK
+SLisnotauniformlanguage—itvariesaccordingtocountryandregion.Therearearound300SL
+availableworldwide,including AmericanSignLanguage(ASL) ,ChineseSignLanguage,British
+Sign Language, ISL, and so on [ 1]. The SLR system recognises SL and converts it into meaningful
+words or expressions for the hearing community. The SL word consist of a sequence of gestures.
+Thus, SLRS are inextricably linked to the gesture recognition task or action recognition problem.
+Researchers have developed several models for recognising SL and hand gestures over the years
+and these models are classified into hardware-based and vision-based models. Models based on
+hardwarearelesscomplexthanmodelsbasedonvision.However,theyhavemanydisadvantages,
+includingthefactthatthesignerfacesdifficultyperforminganygesture,andthehardware-based
+SLR system is not cost-effective, making it unsuitable for real-world sign language recognition
+tasks. Therefore, vision-based solutions are opted for SL recognition to address these issues. The
+proposed work is focused on vision-based techniques. This section discusses current advances in
+SLrecognitionsystem.
+2.1 SLRS ModelswithoutCNN
+The traditional approach of SL recognition without CNN consists of several basic steps such as
+hand detection, hand tracking, segmentation, feature extraction, and classification. Hand motion,
+shape,orientation,posture,andlocationaresomeofthebasicfeaturesthatareusedforSLrecog-
+nition in traditional SLRS models. In SLRS, relevant feature extraction is critical, because irrele-
+vant features lead to misclassification [ 5]. Some of the widely used feature extractions methods
+areScaleInvariantFeatureTransform,SpeededUpRobustFeature,HistogramOrientedGradient,
+PrincipleComponentAnalysis(PCA) ,LinearDiscriminantAnalysis,ConvexHaul,Convexity
+defects, Local Binary Pattern, and so on [ 27,30,34,56,62]. The feature extraction steps help the
+classifier by reducing computation and overfitting. The most commonly used classifiers in SLRS
+areSupportVectorMachine(SVM) ,K-NearestNeighbour, RandomForest(RF) ,andHidden
+MarkovModel(HMM) [21,59].HMM-basedclassifiersperformbetterinthecaseofdynamicSL
+recognition tasks. Ong et al. [ 42] proposed a sequential Pattern Tree-based multi-class classifier
+for recognising Greek Sign Language and their proposed model outperformed HMM. Yang et al.
+ACM Trans. Asian Low-Resour. Lang.Inf.Process., Vol. 23,No. 3,Article37.Publicationdate:March 2024.37:4 S.Das et al.
+[61] suggested a CRF- and SVM-based SLRS for recognizing ASL with manual feature and non-
+manual feature. The BoostMap embeddings are used for hand shape, segmentation is done using
+hierarchicalCRF,andrecognitionisdoneusingSVM.Limetal.[ 33]proposedanSLRSforisolated
+sign word recognition,and theyused an opticalflow featurewithan absolutedifferencebetween
+train and test for classification. Chai et al. [ 10] suggested another SLRS where they proposed a
+novel Grassman Covariance Matrix to encode long sequence and HMM for classification. It has
+beenobservedthatsinglefeatureslikeshapeormotionfeaturesareinsufficientforSLrecognition.
+Thus, a combination of features can be utilized to improve recognition performance. Zaki et al.
+[63] proposed an SLRS where they incorporated hand shape, hand orientation, articulation place,
+and hand movement. They used PCA to determine hand shape and orientation, kurtosis position
+todeterminearticulation,andMotionChainCodetodeterminehandmovement.Forclassification,
+theyhaveusedHMM.TraditionalSLRSmodelshaveperformedsatisfactorilyinsomecases.How-
+ever, selecting appropriate features is challenging, and the performance of the SLRS dependents
+on various factors such as background, efficient and accurate hand detection, and segmentation.
+Therefore,researchershavemoved toward CNNbasedmodels fordynamic SLrecognitiontask.
+2.2 SLRS Modelswith CNN
+Deep learning (DL) models eliminate the extensive image pre-processing steps and overcome
+obstaclesoftraditionalSLRSmodelswithoutCNN[ 48].DeepNeuralNetworkarchitectures,such
+as CNN, learn high-level features automatically from image sequences and removes the prob-
+lemsassociatedwithtraditionalfeatureextractionsteps.DLmodelsextractssalientfeaturesfrom
+eachobjectpresentinanimage.ResearchershaveproposednumerousDL-basedSLRmodelsover
+the years, including three-dimensional (3D) CNN with keyframe [ 22], a combination of 2D and
+3D CNN [ 64], an attention-based model [ 19], and DL architecture with skeleton feature [ 47].
+Researchers used various feature extraction techniques with various models, and the encoder-
+decodermodelperformedbest,withCNNasanencoderandLSTMasadecoder.Likharetal.[ 32]
+proposedacontinuousSLRsystem.ThismethodemploystheCNN-LSTMarchitecture.Theyeval-
+uated the proposed model with 10 dynamic gestures and reported an F1 measure of 99.20%. The
+SLRS proposed by Jaydeep et al. [ 25] capable of recognizing dynamic ISL words in the banking
+sector. They used a pretrained InceptionV3 as a feature extractor and employed a LSTM network
+gesture classification. The model received an 85% recognition rate. Many researchers have em-
+ployed custom LSTM networks to improve the accuracy of the proposed model. Mittal et al. [ 40]
+proposed a continuous SL recognition SLR system based on a custom LSTM. The SLR model can
+recognize ISL sentence with 72.3% accuracy and isolated ISL word with 89.5% accuracy. Aly et al.
+[6] developed a new SLR system for dynamic SL recognition that uses a BiLSTM network. They
+showedthattheBiLSTM networkoutperformsthenormalLSTMnetwork.
+CNN models have performed better compared to the SLRS without CNN. However, they fail
+in some cases where the background is nonuniform and complex. In such cases, the accuracy is
+enhanced by narrowing the focus to the region of interest. Trainable attention mechanisms are
+one way to achieve this. For SL recognition, many researchers have proposed attention-based
+SLRS. Zhang et al. [ 65] proposed an SLRS that used global-local attention with a C3D network
+and achieved an accuracy of 91% and better generalisation performance. Huang et al. [ 24]p r o -
+posed another method for improving generalisation ability by combining a Convolution Block
+Attention Module with a convolution self-encoding network and achieved an accuracy of 89.90%.
+Pan et al. [ 43] suggested an attention-based SLR network for signer-independent SL recognition
+using a keyframe sampling and skeleton features. However, they used temporal attention in the
+proposed SLRS. Rahim et al. [ 44] introduced an innovative approach within the domain of SLRS.
+Their system incorporated ROI identification for individual sign frames. The feature extraction
+ACMTrans. Asian Low-Resour. Lang.Inf.Process., Vol.23,No. 3,Article 37.Publicationdate:March 2024.An ExpertSystem forISL Recognition Using Spatial Attention-based Feature 37:5
+phase involved the extraction of features from segmented and original images, followed by their
+concatenation into a unified feature vector. The classification aspect leveraged a CNN. Sing [ 55]
+proposed a dynamic SL recognition solution centered around a 3D CNN network. This network
+comprised three 3D convolution layers, three pooling layers, fully connected layers, and dropout
+layers.Achievinganoverallaccuracyof88.24%,thismodelshowcasedpromisingresults.Adhikari
+et al. [2] devised a pose-based SLRS methodology employing media pipe for pose feature extrac-
+tion.VariousclassifiersincludingDT,RF,andGradientBoostingwereemployedforclassification.
+Notably, the highest accuracy of 97.4% is attained using the RF classifier. Nonetheless, a draw-
+backisnotedasmediapipeencountereddifficultiesindetectinglandmarksforoverlappinghands.
+Muneeretal.[ 4]introducedanoptimizedC3DnetworkforSLRS.Theirmodelemployedtwosep-
+arate C3D networks for distinct tasks. The first network concentrated on learning features from
+thehandregion,whilethesecondnetworkcapturedfeaturesfromtheentirebody.Concatenating
+thesefeatures,aMulti-LayerPerceptronisutilizedforclassification.Aninefficiencyinthemodel
+and the absence of temporal modeling were highlighted as drawbacks. Aparna et al. [ 7]a d o p t e d
+a hybrid CNN-LSTM approach to develop an SLRS for ISL. Their methodology involved utiliz-
+ing InceptionV3 as a pre-trained CNN model to extract spatial features from sequential frames.
+The sequence learning is achieved using a stacked LSTM network. Areeb et al. [ 8]d e v e l o p e da
+DL-based SLRS with a focus on recognizing ISL words relevant to emergency situations. Three
+distinctmodelswereproposed:twoforclassificationandonefordetection.Thefirstclassification
+modelemployeda3DCNN,whilethesecondmodelcombinedVGG-16forfeatureextractionand
+LSTMforclassification.TheirdetectionmodelintegratedYOLOV5.Notably,accuracyratesof82%
+and98%werereportedforthefirstandsecondclassificationmodels,respectively,whilethedetec-
+tion model reached 99% accuracy. However, a limitation is observed in their evaluation approach,
+as they used only a random subset of data for testing and employed random sampling for frame
+selection,potentiallyresultingin information loss.
+FromtheliteratureitcanbeconcludedthatSLRSwithCNNoutperformtheSLRSwithoutCNN
+andCNNwithanattentionmechanismcanimprovetheperformanceofthemodel.ExistingSLRS
+have utilized various attention mechanisms such as channel attention, global-local attention, and
+temporalattention.However,thespatialattentionmechanismisnotexploredinpreviousmodels,
+whichcanimprove therecognitionaccuracyoftheSLRS.
+3 METHODOLOGY OF THEPROPOSED SASLRM
+The proposed SASLRM is based on a pretrained VGG-19 DL model. The VGG-19 is preferred in
+the proposed model because of its low-level feature extraction capability using a smaller kernel
+size, which is appropriate for the SL recognition task. The proposed work utilizes the concept of
+finetuning, which is one of the TL techniques. The pretrained weight of the ImageNet is used
+in the VGG-19 model for fine-tuning process because of limited data [ 18]. It helps to reduce the
+overfitting issue and the random weight initialization problem. The SASLRM model comprises
+three essential components: (i) keyframe selection, (ii) feature extraction, and (iii) classification.
+The comprehensive design of the SASLRM is visually represented in Figure 1. The subsequent
+sectionsprovide anin-depthexplorationof eachcoremodule.
+3.1 Keyframe Selection
+TheselectionofkeyframesstandsasafundamentalprinciplewithintheSASLRMmodel.SLvideos
+inherently encompass a multitude of frames, with only a limited subset harboring significant in-
+formation.ThemajorityofframesderivedfromSLvideoscontainsuperfluousandrepetitivedata.
+Theintegrationofakeyframeselectionservestoeliminateframesbearingsuchredundantdetails,
+therebyimprovingboththeaccuracyandefficiencyofthesystem.Inthisvein,theproposedSLRS
+ACM Trans. Asian Low-Resour. Lang.Inf.Process., Vol. 23,No. 3,Article37.Publicationdate:March 2024.37:6 S.Das et al.
+Fig.1. Architectureof proposedSASLRM.
+Fig.2. Architectureof CSA module.
+incorporatesamethodforkeyframeselection,specificallyemployingtheHDtechnique.Theoper-
+ational protocol of this algorithm unfolds as follows: Initially, the HD between successive frames
+is computed, with the threshold value subsequently determined from the resultant distance se-
+quence. Then in next phase, the initial frame is opted as a candidate keyframe from the sequence
+offramesandtheHDiscomputedbetweencandidatekeyframeandthesubsequentframe,which
+iscomparedagainstthethreshold.Now,ifthecomputedvaluesurpassthethreshold,thenthecur-
+rent frame is selected as keyframe and the candidate keyframe is updated accordingly with that
+keyframe. This iterative process spans the entire sequence of frames. The outlined procedure is
+encapsulatedin Algorithm 1.
+3.2 Feature Extraction
+The feature extraction is an essential part of the proposed SASLRM. At this stage, the CSA
+module is used for feature extraction. The CSA module consists of the convolution and SA
+module. Figure 2represent the CSA module. A pre-trained VGG-19 network is employed as the
+ACMTrans. Asian Low-Resour. Lang.Inf.Process., Vol.23,No. 3,Article 37.Publicationdate:March 2024.An ExpertSystem forISL Recognition Using Spatial Attention-based Feature 37:7
+ALGORITHM 1: Keyframeselection
+Input:InputFrame sequence of avideo V=F1,F2,F3,F4,...,Fn,w he r enis thetotalframenumber
+Output:S e to fK e y fra m e s
+1Function difference( P,Q):
+2Step 1:ConvertP,Qintograyscaleimage.
+3Step 2:d←Calculate thehistogramdifference utilizing theEuclidean distance technique.
+4returnd
+5Function Main:
+6fors←1ton−1do
+7 P←Fs
+8 Q←Fs+1
+9 X←difference (P,Q)
+10 Th←X
+11end
+12μ←mean(Th)
+13σ←SD(Th)
+14Thresh←μ+σ
+15sets←1a ndt←2andselect Fsas keyframe
+16whilet≤ndo
+17 D←difference (Fs,Ft)
+18 ifD>Threshthen
+19 SelectFtas a keyframe
+20 s←t
+21 t←t+1
+22 end
+23 else
+24 t←t+1
+25 end
+26end
+27return
+convolution module, where the VGG-19’s final pooling layer serves as the convolutional base,
+andtheSAmoduleisaddedafterwardstoextractmoresalientfeaturesfromthesignimages.The
+convolutionalbase,togetherwiththeSAmoduleanddenselayers,aretrainedwiththeSLdataset.
+Afterthat,thetrainednetworkisusedasafeatureextractorintheproposedSASLRMmodel.The
+detailed architectureisgiven inTable 1.
+3.2.1 ConvolutionModule. Accordingtotheliterature,VGG-19hasdemonstratedoutstanding
+performance on various benchmark SL datasets, including the ImageNet dataset. As a feature ex-
+tractor, the VGG-19 network has consistently yielded superior results compared to other models
+acrossmostoftasks[ 17].VGG-19adoptsauniformstructureandemployssmall3 ×3convolution
+filters,whichareinstrumentalinextractingfeaturesfromlocalregionsandenhancingtheabilityto
+learn spatial features required for SL recognition tasks. Furthermore, the proposed model utilizes
+features from the convlayer, facilitating the extraction of features from local regions [ 52]. Com-
+paredtootherpretrainedCNNmodelslikeResNet50,InceptionV3,andGoogleNet,VGG-19hasa
+comparatively lower dimension in the convlayer features. This characteristic makes the VGG-19-
+basedmodelmoreeffectivefortheSLrecognitiontask.Therefore,theproposedSASLRMusesthe
+pre-trained VGG-19 model as the convolution module, where all the layers of VGG-19 are frozen
+ACM Trans. Asian Low-Resour. Lang.Inf.Process., Vol. 23,No. 3,Article37.Publicationdate:March 2024.37:8 S.Das et al.
+Table 1. Detailed Architectureof Feature Extraction
+Network
+Layer type Outputshape
+VGG-19 Model 7×7×512
+Lambda(Average Pooling)_Layer 7×7×1
+Lambda(Max Pooling)_Layer 7×7×1
+Concatenation_Layer 7×7×2
+Convolution_ Layer 7×7×1
+Concatenation_Layer 7×7×513
+Flatten_ Layer 25,137
+Dense_Layer 4,096
+Dense_Layer 4,096
+Dense_Layer 8
+Totalnumber ofparameters:119,578,730
+Trainableparameters:119,578,730
+Nontrainableparameters:0
+exceptforthelastconvolutionlayer.ThelastconvolutionlayeroftheVGG-19extractsimportant
+low-levelfeaturesthatareusefulforSLrecognitiontasks.Duringthetrainingprocess,individual
+video frames are resized at 224 ×224 and fed to the pretrained VGG-19. The output from the last
+pooling layer of VGG-19 gives an intermediate output of 7 ×7×512, which is passed to the CSA
+module. CSA module concatenates the output from the SA module and the intermediate output
+from the convolution module that gives feature vector size of 7 ×7×513 for individual frames.
+Then it is passed to a flattened layer that gives a feature vector size of 25,137 for each frame. Fi-
+nally, the feature vector sequences of respective videos are forwarded to the classification stage
+forclassifyingsign words.
+3.2.2 Spatial Attention Module. This module is used in the proposed model to focus on the
+ROI of sign frames. SA module focuses on the informative part of the sign frames that makes SA
+different from channel attention and temporal attention. The SA module follows the SA concept
+proposedinReference[ 60].TheSAmoduleperformsaverage-poolingandmax-poolingoperation
+on the output from the last pooling layer of VGG-19 model. After this, two different vectors from
+max-pooling and avg-pooling are concatenated and passed to convolution layer with sigmoid ac-
+tivationfunctionwherekernelsizeissetas7 ×7.Theconcatenatedoutput(M_s(F))isdefinedin
+Equation( 1),
+Ms(F)=σ/parenleftBig
+f7×7/parenleftBig/bracketleftBig
+Fs
+avg;Fs
+max/bracketrightBig/parenrightBig/parenrightBig
+, (1)
+wheref(7×7)definestheconvolutionoperationwithafiltersizeof7 ×7,Fs
+avgdefinesa2Dfeature
+vector from the average pooling operation, and Fs
+maxdefines a 2D feature vector from the max
+pooling operation. Fs
+avg∈R(1×H×w)andFs
+max∈R(1×H×w),w h e r eF,H,a n dWdenote the input
+vector,height,andwidthofthevector,respectively.TheincorporationofSAintotheCSAmodule
+significantlyenhancestheperformanceoftheSASLRM.SAenablesthemodeltoselectivelyfocus
+on essential regions or features within the input data while disregarding irrelevant information.
+It effectively suppresses noise and distractions, making the model more robust, especially in clut-
+teredordistractinginputscenarios.Moreover,SAreducesthecomputationalburdenbydirecting
+resourcestowheretheyaremostneededthatimprovesefficiency.Thisattentionmechanismalso
+aids in generalization, allowing the model to identify common patterns across various examples
+and thereby enhancing its accuracy when dealing with new and unseen data. In summary, SA’s
+ACMTrans. Asian Low-Resour. Lang.Inf.Process., Vol.23,No. 3,Article 37.Publicationdate:March 2024.An ExpertSystem forISL Recognition Using Spatial Attention-based Feature 37:9
+Fig.3. SpatialAttentionmodule.
+Table 2. Detailed Architectureof Classification
+Module
+Layer type Outputshape
+CSAModel 25,137
+BiLSTM_layer 1,024
+Dense_layer 256
+Dense_layer 8
+Totalnumberofparameters:105,126,152
+Trainableparameters:105,126,152
+Nontrainableparameters:0
+integrationintotheCSAmoduleelevatestheSASLRM’sperformancebyimprovingfocus,robust-
+ness,efficiency,andgeneralization capabilities.Figure 3illustratetheSAmechanism.
+3.3 Classification
+ThefeaturesfromtheCSAmodulearegivenasinputtotheclassificationmodule,whichconsists
+of a BiLSTM layer, a fully connected layer and a SoftMax classifier. Table 2gives the detailed
+architectureoftheclassificationmodule.
+3.3.1 BiLSTM Layer. Following the extraction of features, the subsequent objective revolves
+around harnessing these extracted information to capture temporal insights from the sequential
+sign frames. Traditional deep neural networks fall short in achieving this due to their incapacity
+to grasp sequential patterns.The challenge at hand is effectively tackled by a Recurrent Neural
+Network(RNN) ,asdemonstratedbySenthiletal.[ 53].RNNs’feedbackmechanismequipsthem
+toretainhistoricaldata.AspecializedformofRNN,knownasLSTM,isextensivelyemployedfor
+addressingsequentialinputpredicaments.OneofLSTM’scorestrengthsliesinmitigatingtwokey
+issuesofstandardRNNs:vanishingandexplodinggradients.Itexcelsinpreservingextensivepat-
+ternsacrosssequences.ThearchitectureofanLSTMmodule,depictedinFigure 4,underscoresits
+distinctive ability to incorporate various gates that facilitate operations like information addition
+or removal.
+Equations ( 2) through (7) provide an elaborate exposition of the operations within the LSTM
+module,
+Fk=σ(wF[hk−1,xk]+bF), (2)
+Ik=σ(wI[hk−1,xk]+bI), (3)
+´ck=tanh(wC[hk−1,xk]+bC), (4)
+ck=Fk·ck−1+Ik·´ck, (5)
+ACM Trans. Asian Low-Resour. Lang.Inf.Process., Vol. 23,No. 3,Article37.Publicationdate:March 2024.37:10 S.Das et al.
+Fig. 4. Block diagram of theLSTM cell.
+ok=σ(wO[hk−1,xk]+bO), (6)
+hk=ok·tanhck, (7)
+whereFksignifiestheoutputvalueattheforgetgate, Ikrepresentstheoutputoftheinternalstate,
+andhtdenotestheintendedfinaloutput. wF,wO,andwCcorrespondtotheweightmatrices,while
+bF,bO,a n dbCpertaintothebiasterms.
+DifferenttypesofLSTMs,suchasBiLSTM,ConvLSTM,LSTM,andstackedLSTM,areemployed
+for the task of sequence learning. The choice of a particular LSTM adaptation depends on the re-
+quirementsofthespecificapplication.Drawingfrompriorresearchandourownexperimentation,
+the BiLSTM network emerges as the most effective option for SL recognition. This is attributed
+toBiLSTM’scapabilitytoprocessinputsequencesbothforwardsandbackwards,enablingpredic-
+tions based on future context. Thus, in SASLRM, the BiLSTM layer is utilized to grasp sequential
+information.Thesuggestedmodelincorporatesa BiLSTMlayer featuring512neurons.
+3.3.2 FullyConnectedLayer. Beforethefinalclassificationlayer,adenselayerisusedwith256
+neuronsas shownin Table 2.
+3.3.3 SoftmaxLayer. Thesoftmaxlayerisusedtoclassifythesignwordsbaseduponprobability
+score. The number of categories in the dataset determines the unit number for the softmax layer.
+For classification, the softmax layer generates a multinomial distribution of probability scores.
+Equation(8)is usedtocalculatetheprobabilityscore,
+p(A=C|B)=eBk
+/summationtext.1eBj. (8)
+4 EXPERIMENTALANALYSIS
+4.1 Dataset
+The experimentation is conducted utilizing the ISL dataset, which is openly accessible [ 3]. This
+sectionprovidesa conciseoverviewof thedatasetemployed in thisstudy.
+Dataset description: The dataset comprises ISL words associated with dynamic gestures
+pertinent to emergency scenarios. It encompasses a total of eight categories: “Accident,” “Call,”
+“Doctor,” “Help,” “Heat,” “Lose,” “Pain,” and “Thief.” These terms are frequently utilized to convey
+urgentmessagesorseekaidduringcriticalsituations.Eachclassincorporates52videos,withthe
+exception of the “Lose” and “Thief” categories. A diverse set of contributors, encompassing 26
+adults,including12malesand14femalesagedbetween22to26years,participatedingenerating
+theSLvideoclips.Thisvariationisintroduceddeliberatelytoenhancethediversityofthedataset.
+ACMTrans. Asian Low-Resour. Lang.Inf.Process., Vol.23,No. 3,Article 37.Publicationdate:March 2024.An ExpertSystem forISL Recognition Using Spatial Attention-based Feature 37:11
+Fig.5. Extracted framesamples of ISLdataset for categories (a) Accident, (b) Call, and (c) Lose.
+Table 3. Overvew of theDataset
+Category Participantnumber Totalinstances
+accident 26 52
+Call 26 52
+doctor 26 52
+help 26 52
+hot 26 52
+lose 25 50
+pain 26 52
+thief 25 50
+Thetotalnumberof instances 412
+TotalFrames 31,264
+Longest videoduration 4s
+Shortestvideoduration 1.53s
+Resolution 500 ×600
+An exemplification of frame samples from the dataset is presented in Figure 5. Further insights
+into thedataset’scompositionare providedinTable 3.
+4.2 ExperimentalSetup and Implementation Details
+TheexperimentationprocedureisconductedutilizingPython3.9,TensorFlow,andKerasonawork
+station featuring an Intel Xenon processor and 64-GB DDR5 RAM. The fundamental parameters
+for trainingthemodelare outlinedin Table 4.
+To select hyperparameters, we conducted several experiments. However, due to limited com-
+putational resources, we utilized standard values for certain hyperparameters. For instance, the
+learningratefortheAdamoptimizersettothedefaultvalueof0.001.Additionally,thenumberof
+neuronsinthefullyconnectedlayerandthenumberofepochsweresetto256and20,respectively
+[8,57]. To determine the optimal batch size and number of neurons in the BiLSTM layer for the
+SASLRMmodel,weperformedfurtherexperiments.Ourobservationsrevealedthatusingabatch
+ACM Trans. Asian Low-Resour. Lang.Inf.Process., Vol. 23,No. 3,Article37.Publicationdate:March 2024.37:12 S.Das et al.
+Table4. Parameters Settings
+Parameters Settings
+Image Size 224×224
+BatchSize 32
+Epochs 100,20
+Optimizer Adam
+Learningrate 0.001
+Loss function CategoricalCrossEntropy
+Rescale 1/255
+Table 5. Accuracy forDifferent Batch Sizes and Number of Neurons
+Batch Size Number of neuronsin BiLSTM Layer Accuracy(%)
+8256 93.68
+512 95.14
+1,024 95.14
+16 512 96.11
+32 512 96.60
+64 512 94.65
+Fig.6. Actual and keyframes from“Call” sign video.
+size of 32 and 512 number of neurons in the BiLSTM layer resulted in the best outcomes. Table 5
+providestheoutcomeof theexperiment.
+Fromtheresults,itcanbeobservedthatwithsamebatchsizeandincreaseinnumberofneurons
+doesnotimprovetheperformance;thus,thenumberofhiddenunitisfixedat512forsubsequent
+batchsizes.
+4.3 Results and Discussion
+4.3.1 Results of Keyframe Selection Algorithm. The actual frames and extracted keyframes for
+the “Call” sign are shown in Figure 6. The Call sign consists of a total of 75 frames, but only
+10 frames were obtained after executing the keyframe selection algorithm. Figure 7provides a
+comparisonbetweentheactualnumberofframesandthenumberofkeyframesextractedforeach
+class.TheHDvaluesobtainedforthe“Call”signvideosampletocalculatethethresholdvalueare
+presentedinTable 6,wheretheobtainedthresholdvalue is6082.4980.
+Thedatasetcontainstotal31,264frames,extractedfrom412videos.Afterexecutionofkeyframe
+selectionalgorithmit reducesto4,956.
+4.3.2 Results of the Proposed SASLRM. For model evaluation, a repeated k-fold CV method-
+ology is employed. The ISL dataset forms the foundation for assessing the effectiveness of the
+ACMTrans. Asian Low-Resour. Lang.Inf.Process., Vol.23,No. 3,Article 37.Publicationdate:March 2024.An ExpertSystem forISL Recognition Using Spatial Attention-based Feature 37:13
+Fig. 7. Comparative analysisbetween actual number of frameandextracted keyframe.
+Table 6. FrameDifference Values toCalculate Threshold for Sample“Call” Sign Video
+Value Frame difference Value Frame difference Value Framedifference
+ofnvalued=Fn−Fn+1ofnvalued=Fn−Fn+1ofnvalued=Fn−Fn+1
+n=1 1217.764 n=26 3086.269 n=51 3944.813
+n=2 2574.648 n=27 2651.318 n=52 4319.377
+n=3 2538.348 n=28 4093.014 n=53 4114.301
+n=4 4402.682 n=29 6486.309 n=54 1859.803
+n=5 5469.165 n=30 6443.643 n=55 5143.418
+n=6 2804.609 n=31 5239.489 n=56 5951.384
+n=7 1995.546 n=32 1381.968 n=57 7916.884
+n=8 3243.938 n=33 15371.96 n=58 4767.201
+n=9 6265.107 n=34 3845.832 n=59 5206.903
+n=10 6228.337 n=35 2949.526 n=60 2978.777
+n=11 5221.185 n=36 4468.579 n=61 2952.717
+n=12 4803.998 n=37 1883.7 n=62 3885.778
+n=13 1683.613 n=38 1807.858 n=63 2823.877
+n=14 3340.464 n=39 7349.98 n=64 4358.893
+n=15 4035.786 n=40 5706.246 n=65 5372.001
+n=16 3388.099 n=41 4770.412 n=66 1945.707
+n=17 4827.764 n=42 2423.231 n=67 1256.903
+n=18 3347.618 n=43 1943.406 n=68 1469.536
+n=19 2907.632 n=44 1532.749 n=69 5468.828
+n=20 1300.703 n=45 4699.361 n=70 6333.01
+n=21 3035.459 n=46 7206.831 n=71 3773.547
+n=22 2897.902 n=47 5837.176 n=72 2950.8
+n=23 2809.976 n=48 3770 n=73 1595.268
+n=24 4238.255 n=49 3883.96 n=74 4624.214
+n=25 1683.664 n=50 2875.263 — —
+proposedSASLRMmodel.Initially,thedatasetisevenlypartitionedintotwohalves,with50%allo-
+cated for training and the remaining half for testing. Following this initial arrangement, the roles
+of the training and testing sets are swapped, and the average performance is computed based on
+thisexchange.Thisiterativeprocedureisrepeatedfivetimestoderiveafinalaverageperformance.
+ACM Trans. Asian Low-Resour. Lang.Inf.Process., Vol. 23,No. 3,Article37.Publicationdate:March 2024.37:14 S.Das et al.
+Table 7. Average ResultsfromFiveRepetitions for VariousClassificationNetworks with theVGG-19
+Model
+Method Precision RecallF1-score Accuracy (%) SD (σ)of Accuracy
+Keyframe+ VGG-19 + LSTM 0.9357 0.93340.9332 93.289 0.8719
+Keyframe+ VGG-19 + BiLSTM 0.9497 0.94700.9465 94.654 0.4354
+Keyframe+ VGG-19 + Stacked BiLSTM 0.9143 0.90590.9050 91.594 1.09
+Keyframe+ VGG-19 + ConvLSTM 0.9489 0.94550.9434 94.508 0.8894
+Table 8. Performanceof theProposedSASLRMon ISLDataset
+Repetition Precision RecallF1-score Accuracy Average accuracy(%) SD (σ)ofAccuracy
+1st 0.9574 0.94930.9540 95.38 95.627 0.6335
+2nd 0.9675 0.96630.9660 96.60
+3rd 0.9538 0.94950.9491 94.90
+4th 0.9540 0.95180.9515 95.14
+5th 0.9630 0.96140.9586 96.11
+Fig.8. ConfusionMatrixof thefirstandsecondfolds of firstrepetition.
+The proposed model’s performance is gauged through classification outcomes on the ISL dataset.
+Intheprocessofselectingtheappropriateclassificationnetwork,variousoptions,includingLSTM,
+BiLSTM, Stacked BiLSTM, and ConvLSTM, are assessed alongside the base VGG-19 model. From
+these alternatives, the BiLSTM network displayed superior performance. This is ascribed to the
+BiLSTM’scapabilitytoprocessinputsequencesinbothforwardandbackwarddirections,thereby
+enabling predictions grounded in future context. A comparative analysis of the outcomes is pro-
+vided inTable 7.
+The findings clearly indicate that the BiLSTM network combined with VGG-19 exhibited su-
+perior performance compared to other models in various metrics such as precision, recall, F1-
+score, and accuracy. Consequently, the BiLSTM network is selected for the proposed SASLRM.
+Theachievedperformancemetricsfortheproposedmodelincludeanaverageprecisionof0.9591,
+recallof0.9556,F1-scoreof0.9558,andanaverageaccuracyof95.627%.Acomprehensivedepiction
+oftheproposedSASLRM’sperformanceusingtheISLdatasetispresentedin Table 8.
+CM are illustrated in Figure 8, pertaining to the first and second folds of the initial repetition.
+A careful examination of these matrices reveals that the proposed model demonstrates accurate
+ACMTrans. Asian Low-Resour. Lang.Inf.Process., Vol.23,No. 3,Article 37.Publicationdate:March 2024.An ExpertSystem forISL Recognition Using Spatial Attention-based Feature 37:15
+Table 9. PerformanceComparison with Previous Approaches on ISLDataset
+Author Technique Precision RecallF1-score Accuracy (%)
+Aditya et al. [ 3]DWT + Multiclass SVM (50-50 random split) 0.9127 0.89990.9025 90
+Aditya et al. [ 3]GoogleNet +BiLSTM (50-50 random split) 0.9638 0.96240.9625 96.25
+Aparna et al. [ 7]Inception V3 +Stacked LSTM (50-50split) — —— 69
+Areeb et al. [ 8]3D CNN (80-20 random split) 0.85 0.83620.8262 82
+Areeb et al. [ 8]VGG16+LSTM(80-20 split) 0.9750 0.97750.9737 98
+Das et al. [ 14]VGG19+handcrafted+Stacked BiLSTM(50-50 split) 0.9281 0.91990.9218 94.42
+Proposed VGG19with spatial attention + BiLSTM (Repeated twofold CV) 0.9591 0.95560.9558 95.627
+classification for the “Lose,” “Pain,” and “Thief” classes. However, the model does encounter chal-
+lengesinaccuratelyclassifyingthe“Call”and“Hot”signs,leadingtofrequentmissclassifications
+in thesecases.
+4.3.3 Comparison with Existing Approaches on ISL Dataset. The outcomes of the proposed
+SASLRM are contrasted with outcomes from several existing models using the ISL dataset. The
+comparative results are summarized in Table 9. Upon analysis, it is evident that the model pre-
+sented in Reference [ 7] attained the lowest accuracy of 69% as it solely relies on global features
+derivedfromapre-trainedInceptionV3network.Incontrast,themodelintroducedinReferences
+[3] got an accuracy of 90% by employing DWT, which is adept at extracting local features due
+to its localization property.Another deep learning model proposedin the same study [ 3] reached
+an accuracy of 96.25%. This model employed Google Net for feature extraction and BiLSTM for
+classification, with 2000 neurons within the BiLSTM network.It is essentialto emphasize that the
+model proposed by Aditya et al. [ 3] reported an accuracy of 96.25%. However, it is crucial to note
+the substantial difference in evaluation criteria employed for this model. Aditya et al. conducted
+theirevaluationusingarandom50-50train-testsplit,whiletheproposedSASLRMemployedare-
+peatedtwofoldcross-validationtechnique.Whenbothmodelsareassessedunderthesameexper-
+imentalsetup,themodelproposedbyAdityaetal.achievedanaverageaccuracyof93.88%,which
+is comparatively lower than the average accuracy of 95.627% attained by the proposed SASLRM.
+Moreover,themodelproposedmodelbyAdityaetal.hasuseddataaugmentationonthecomplete
+dataset;unlikeimagedataaugmentation,videodataaugmentationlimitedduetotemporalnature
+ofthevideo;becauseofthatvideodataaugmentationcangenerateredundantdataanditrequires
+significant amount of computational resources. Thus, the proposed model does not incorporates
+theanydataaugmentationtechnique.Besides,themodelproposedinReference[ 3]hasused2,000
+ofneuronsinBiLSTMlayerthatmakesitinefficient.TheproposedSASLRMhasachievedthesat-
+isfactoryperformancewithoutanydataaugmentationandbyusing512numberofneuronsinthe
+BiLSTMlayerthatprovidesupperhandtothesuggestedapproach.The3DCNNmodelpresented
+in Reference [ 8] attained an accuracy of 82%, which is comparatively lower than various CNN-
+LSTMbasedmodels.Thiscanbeattributedtothefactthatthe3DCNNmodelistrainedfromthe
+ground up. On another note, a distinct model introduced in the same [ 8] achieved an accuracy of
+98%; however, the evaluation criteria employed for the model differ significantly. They evaluated
+usingarandom80-20train-testsplitwherethenumberoftestsamplesareveryless,whilethepro-
+posedmodelevaluatedusingarepeatedtwofoldcross-validationtechnique.Whenbothmodelsare
+implemented and evauated under the same experimental setup, the model proposed in Reference
+[8] achieved an average accuracy of 94.21%, which is comparatively lower than the average accu-
+racyof95.627%attainedbytheproposedSASLRM.Furthermore,themodelproposedinReference
+[8] has used uniform sampling for keyframe selection where at specific time interval frames are
+extracted from the video. Therefore, there is an always chance of loss of information specifically
+if the video consists of a large number of key gestures. In contrast the proposed SAASLRM uses
+ACM Trans. Asian Low-Resour. Lang.Inf.Process., Vol. 23,No. 3,Article37.Publicationdate:March 2024.37:16 S.Das et al.
+Table 10. Detailed ClassificationReportsonISL
+Dataset
+Class Name Precision RecallF1-score
+Accident 0.9922 0.97680.9843
+Call 0.9141 0.89310.8983
+Doctor 0.9630 0.95020.9517
+Help 0.9528 0.96200.9559
+Hot 0.9817 0.91970.9422
+Lose 0.9810 0.98850.9861
+Pain 0.9449 0.97680.9604
+Thief 0.9466 0.98920.9717
+Histogram Difference–based key frame selection technique that makes it more advantageous. In
+Reference[ 14],anaverageaccuracyof94.42%hasbeenachieved.Thisaccomplishmentisrealized
+throughablendoflocalhandcraftedfeaturesandCNNfeatures.Theclassificationaspectemployed
+astackedBiLSTM.Nevertheless,theinclusionofstackedBiLSTMresultsinadecreaseinaccuracy.
+TheSASLRMmodelproducesanaverageaccuracyof95.627%,wheretheaverageistakenfrom
+fiverepetitionoftwofoldcross-validation.TheaverageresultsarecomparedwiththeexistingSLRS
+where,theproposedmodelhasoutperformedmostoftheexistingSLRS.Thesuggestedapproach
+acquired better accuracy compared to the existing models, because the SASLRM model uses the
+CSAmodule,whichhelpstoextractmoresalientfeaturesfromthelocalhandregionbycombining
+SAandconvolution featuresthatemphasizefeaturesfrom thelocalhandregion.
+4.3.4 Classwise Analysis. The classwise analysis of the proposed SASLRM on ISL dataset is
+discussedinthissection.Forthisanalysis,precision,recallandF-scorevaluesareused.Equations
+(9),(10),and(11)calculatetheprecision,recall,andF-score,respectively,
+Precision =TP
+TP+FP, (9)
+Recall=TP
+TP+FN, (10)
+F-Score=2×(Precision ×Recall)
+Precision +Recall, (11)
+whereTP,FP,a n dFNare the true-positive value, false-positive value, and false-negative value,
+respectively.TheaveragevaluesarereportedinTable 10.Lowprecisionvaluespecifieshighfalse-
+positivecases,whereaslowrecallvaluespecifieshighfalse-negativecases.Itcanbeobservedthat
+theclass“Call”hasthelowestprecisionvaluethatmeansithashighestfalse-positivecases,which
+indicates many gesture classes are miss classified into “Call” class. However, the “Call” class has
+the lowest recall value, which indicates that the word “Call” is misclassified into other gesture
+classesin a large number. However, the proposedmethod overall classifies each class with a high
+recognitionrate.
+4.3.5 Error Analysis. From the average classification report it can be observed that the “Call”
+signhasthelowestF1-scorevalue.Thissectiondiscussesaboutthemisclassifiedresultsofthecall
+signs.
+Most of the “Call” sign video samples suffers from the self-occulision problem, which is one of
+themajorreasonsforhighmisclassificationrateforthe“Call”signs.Figure 9showsthekeyframes
+of some of the misclassified video samples of “Call” sign. Furthermore it has been observed that
+ACMTrans. Asian Low-Resour. Lang.Inf.Process., Vol.23,No. 3,Article 37.Publicationdate:March 2024.An ExpertSystem forISL Recognition Using Spatial Attention-based Feature 37:17
+Fig.9. Keyframesof missclassifiedvideosamples for “Call” sign.
+Fig.10. Keyframes of “Lose,” “Pain,” and“Thief”video samples.
+due to inter-class similarity and intra-class dissimilarity the model got confused. From Figure 10,
+itcanbeobservedthat“Lose”and“Pain”signhavesimilaritieswith“Call”signintermsofgesture
+position.Thus,mostofthecallsignvideosaremisclassifiedas“Lose”and“Pain,”andsomeofthe
+samplesaremisclassifiedas“Thief.”Specificallyforvideosample2andsample3itcanbeobserved
+that keyframe selectionalgorithm fails to extract all the key gesture positions,whichmay be one
+of theprobablereasonsfor misclassification.
+ACM Trans. Asian Low-Resour. Lang.Inf.Process., Vol. 23,No. 3,Article37.Publicationdate:March 2024.37:18 S.Das et al.
+Table 11. Comparisonwith ExistingMethodson LSA64
+Author Technique Number ofInstances Accuracy (%)
+Ra mose ta l .[ 41]3DCNN 64 93.9(Avg.of3 repetition)
+Ronchettietal. [ 50]Random transform withHMM+GMM 64 95.95(Avg.of30repetition)
+Rodriguez et al. [ 49]Cumulativeshapedifference + SVM 64 85
+Masoodet al. [ 39]InceptionCNN+ LSTM 64 95.20
+Shah et al. [ 54]InceptionCNN+ BiLSTM 64 96
+Elsayed et al. [ 20]3DCNN +LSTM 40 98.50
+Proposed Keyframe + VGG19withspatial attention+BiSLTM 64 97.84(Avg.offiverepetition)
+Table 12. Comparative Analysison Cambridge HGR Dataset
+Author Method Accuracy (%)
+Lui etal.[ 37]Tangentbundle onGrassmann manifold 91
+Lui etal.[ 36]Leastsquare regression method 88
+Harandiet al.[ 51]Weighted Riemannian manifoldsand3Dcovariancedescriptors 93
+Liu etal.[ 35]Primitive3D operators with genetic algorithm 85
+Baraldi etal.[ 9]Dense trajectories handsegmentation 94
+Jhon etal.[ 26]KeyframewithCNN model 91
+Aditya etal.[ 57]GoogleNet+BiLSTM 97.22
+Proposed SASLRM 98.22
+4.3.6 Validation of SASLRM with Standard Datasets. Regrettably, there is lack of standard ac-
+cessible dataset for the ISL within the public domain. Numerous researchers have crafted their
+individual dataset for the task; however, these datasets remain either partially accessible, or they
+are not publicly available. In light of this, the proposed model undergoes validation via testing
+againstthreebenchmarkdatasets.
+Dataset1: The LSA64 dataset stands out as a publicly accessible extensive dataset utilized for
+recognition of Argentine SL. This dataset is widely used for evaluating SLRS. The dataset encom-
+passes a of 3,200 videos spanning 64 classes, derived from 10 non-expert subjects. Within these
+classes,22utilizedoublehands,whiletheremainingclassesemployasinglehandforperforming
+SLgestures.Toevaluatetheproposedmodel,thedatasetispartitionedinan80-20ratio,andtheav-
+erageoutcomeacrossfiverepetitionsiscomputed.TheLSA64datasethasbeenwidelyadoptedby
+variousresearchersfortheevaluationoftheirproposedSLRS.Theoutcomeoftheproposedmodel
+isdepictedinTable 11alongsideacomparisonwithcertainexistingmethodsontheLSA64dataset.
+It is discernible from the results that the proposed method achieves enhanced results in compari-
+son to existing methods on the LSA64 dataset, with the exception of Reference [ 20]. Nonetheless,
+itis crucialtohighlightthatReference[ 20] utilized asubsetofthedatasetcomprising40 classes.
+Dataset2: Dynamic HandGestureRecognition(HGR) isverysimilartothistask.Thus,the
+SASLRMisvalidatedwithabenchmarkHGRdatasetnamedtheCambridgeHandGesturedataset
+isused[28].Thedatasetconsistsof900dynamicgesturevideosofnineclasses,andeachclasscon-
+tains100samples.Therearethreeshapesinthedataset:V,flat,andspread,aswellasthreemotions:
+left, right, and contract. The dataset is prepared with the help of two individuals under different
+illumination conditions. The dataset split into two halves, with 450 video samples used for train-
+ing and the remaining 450 video samples used for testing. The experiment is repeated twice with
+differenttrainandtestdata,andtheaverageresultsarereported.Table 12showsacomparisonof
+previousworksonthesamedataset.TheproposedmodelusesthepretrainedVGG-19modelwith
+the SA module, which extracts salient features from the frame sequences. In contrast with exist-
+ingmethods,theproposedmodeluseskeyframeselectionmethodsthatenhancetheaccuracyand
+efficiency of the SLRS by discarding the unwanted frames. Thus, the proposed SASLRM reached
+ACMTrans. Asian Low-Resour. Lang.Inf.Process., Vol.23,No. 3,Article 37.Publicationdate:March 2024.An ExpertSystem forISL Recognition Using Spatial Attention-based Feature 37:19
+Table 13. Comparative Analysison WALSL Dataset
+Author Technique Accuracy(%)
+A. Hosainetal. [ 23]Fusion-3 77.51
+M.Maruyamaet al.[ 38]Multi-stream 87.47
+E.Rajalakshmietal. [ 46]HNN-ISLR 99.85
+E.Rajalakshmietal. [ 45]hDNN-SLR 97.54
+Proposed SASLRM 98.86
+Table14. AbilityAnalysisof Each Moduleof theProposedSASLRMon ISLDataset
+Modules Accuracy(%)
+VGG-19 withSAmodule 76.69
+VGG-19 94.654
+VGG-19 withcombinationof SAand Convolutionmodule 95.627
+Table 15. Comparison of Average Execution Times per Videoon ISLDataset
+MethodKeyframe selection
+Time(sec)/videoFeatureExtraction
+Time(sec)/videoTraining Time
+(Classification Network) (sec)Training Time(Feature
+Extraction Network) (sec)Prediction
+Time(sec)/videoTotal Execution
+Time(sec)
+Without Keyframe — 4.67 1820 2150 0.09 3974.76
+With Keyframe 2.73 0.745 692 850 0.07 1545.54
+a mean accuracy of 98.22%, which is significantly better than in Reference [ 36] and Reference
+[35]. However, the method proposed in Reference [ 57] reached an accuracy of 97.22%, which is
+closest to the proposed model, because both models follow the CNN-BiLSTM architecture, which
+incorporatesspatialand temporalfeaturesneededfor dynamic handgesturerecognition.
+Dataset 3: The proposed framework is also evaluated with WLASL-2000 dataset. which is a
+benchmarkdatasetforisolatedwordsofASL.Forevaluationtop-5percentageaccuracyisconsid-
+ered. The performance of the proposed method is compared with some of the prominent work
+in this domain, such as Fusion-3 [ 23], multi- stream [ 38], HNN-ISLR [ 45], and hDNN-SLR [ 46].
+Table13shows the comparative results. From the results it can be observed that the proposed
+SASLRM hasperformedbetterin comparisonwithmostof theexistingworks.
+4.3.7 Significance of the Components of SASLRM. To check the importance of each module of
+SASLRM, the ability analysis is done. This study investigates the significance of the convolution
+module and the SA module, as well as their combination in the proposed SASLRM. The average
+classificationaccuracyontheISLdatasetisusedtodeterminethecontributionofeachcomponent
+oftheproposedmethod.TheaverageaccuracycomparisonislistedinTable 14.Theresultsclearly
+showthatthecombinationofSAandconvolutionmodulehasperformedbetter.SAmodulealone
+isnotsufficientforbetterperformance;however,theSAmodulehelpstoincreasetheaccuracyof
+theproposedmodel.Further,toinvestigatethecontributionofthekeyframeextractiomodulethe
+proposedmodel is executedwithout keyframe selectionmodule. Thedetailed results are given in
+Table15. From the results it can be observed that the keyframe selection reduces the execution
+time significantly.
+5 CONCLUSION AND FUTURE SCOPE
+This article proposes a novel vision-based SLRS named SASLRM for recognizing ISL words that
+are frequently used in an emergency situation. The proposed SASLRM uses a keyframe selection
+module to eliminate redundant and useless frames, which helps to enhance the accuracy. The
+ACM Trans. Asian Low-Resour. Lang.Inf.Process., Vol. 23,No. 3,Article37.Publicationdate:March 2024.37:20 S.Das et al.
+proposed model extract features using the SA module on top of the VGG-19 and classifies sign
+words using the BiLSTM model. The evaluation results indicates that the proposed method
+outperforms the existing SLRS. Besides this, the importance of each module is investigated,
+and, analyzing the outcomes, it is noticeable that the fusion of SA and convolution modules
+outperforms individual ones. The results show that the proposed SASLRM is better suited to the
+SL recognition task, and the combination of the convolution and SA modules improves the SLRS
+performance. However, during error analysis it is observed that the proposed model encounters
+challengeswhenattemptingtoclassifysignwordsinscenariosinvolvingself-occlusion.Theissue
+ofself-occlusionposesasignificanthurdlewithinthedomainofsignlanguagerecognition.Inthis
+context, self-occlusion occurs when a specific body part or object involved in making a gesture
+is hidden or obstructed from view by another part of the same body or object. Consequently, this
+phenomenon leads to misclassifications. Thus, as a part of future work SLRS can be developed to
+addresstheself-occlusionproblemtoimprove theperformanceof theSLRS.
+ACKNOWLEDGMENTS
+TheauthorsthankComputerScienceDepartmentofNITSilcharforprovidingtheresearchfacility.
+6 DATA AVAILABILITY
+Thedatasetsutilizedin thisstudyarepublicly accessible.
+7 CONFLICTOF INTEREST
+Allthecontributorsassertthatno conflictsofinterestarepresent.
+REFERENCES
+[1] 2018. World Health Organization. Retrieved from https://www.who.int/news-room/fact-sheets/detail/deafness-and-
+hearing-loss
+[2] SubhangiAdhikary,AnjanKumarTalukdar,andKandarpaKumarSarma.2021.Avision-basedsystemforrecognition
+of words used in indian sign language using mediapipe. In Proceedings of the 6th International Conference on Image
+InformationProcessing (ICIIP’21) , Vol. 6.IEEE, 390–394.
+[3] V.AdithyaandR.Rajesh.2020.Handgesturesforemergencysituations:Avideodatasetbasedonwordsfromindian
+signlanguage. Data Brief 31(2020),106016.
+[4] MuneerAl-Hammadi,GhulamMuhammad,WadoodAbdul,MansourAlsulaiman,MohammedA.Bencherif,TareqS.
+Alrayes, Hassan Mathkour, and Mohamed Amine Mekhtiche. 2020. Deep learning-based approach for sign language
+gesturerecognition withefficienthand gesture representation. IEEEAccess 8(2020),192527–192542.
+[5] Muneer Al-Hammadi, Ghulam Muhammad, Wadood Abdul, Mansour Alsulaiman, Mohamed A. Bencherif, and Mo-
+hamed Amine Mekhtiche. 2020. Hand gesture recognition for sign language using 3DCNN. IEEE Access 8 (2020),
+79491–79509.
+[6] SalehAlyandWalaaAly.2020.DeepArSLR:Anovelsigner-independentdeeplearningframeworkforisolatedarabic
+signlanguagegestures recognition. IEEEAccess 8 (2020),83199–83212.
+[7] C.AparnaandM.Geetha.2020.CNNandstackedLSTMmodelforIndiansignlanguagerecognition.In MachineLearn-
+ingandMetaheuristicsAlgorithms,andApplications:FirstSymposium(SoMMA’19),RevisedSelectedPapers1 .Springer,
+126–134.
+[8] QaziMohammadAreeb,MohammadNadeem,RoobaeaAlroobaea,FaisalAnwer,etal.2022.Helpinghearing-impaired
+inemergencysituations: A deep learning-basedapproach. IEEEAccess 10(2022),8502–8517.
+[9] Lorenzo Baraldi, Francesco Paci, Giuseppe Serra, Luca Benini, and Rita Cucchiara. 2014. Gesture recognition in ego-
+centric videos using dense trajectories and hand segmentation. In Proceedings of the IEEE Conference on Computer
+Vision andPattern Recognition Workshops .688–693.
+[10] XiujuanChai,HanjieWang,FangYin,andXilinChen.2015.Communicationtoolforthehardofhearings.In Proceed-
+ings oftheInternational Conference onAffective Computing andIntelligentInteraction (ACII’15). 1–3.
+[11] Necati Cihan Camgoz, Simon Hadfield, Oscar Koller, and Richard Bowden. 2017. Subunets: End-to-end hand shape
+and continuous sign language recognition. In Proceedings of the IEEE International Conference on Computer Vision .
+3056–3065.
+ACMTrans. Asian Low-Resour. Lang.Inf.Process., Vol.23,No. 3,Article 37.Publicationdate:March 2024.An ExpertSystem forISL Recognition Using Spatial Attention-based Feature 37:21
+[12] Runpeng Cui, Hu Liu, and Changshui Zhang. 2017. Recurrent convolutional neural networks for continuous sign
+language recognition by staged optimization. In Proceedings of the IEEE Conference on Computer Vision and Pattern
+Recognition . 7361–7369.
+[13] Soumen Das, Saroj Kr Biswas, Manomita Chakraborty, and Biswajit Purkayastha. 2022. Intelligent Indian sign lan-
+guagerecognitionsystems:Acriticalreview.In ICTSystemsandSustainability:ProceedingsofICT4SD2021,Volume1
+(2022),703–713.
+[14] Soumen Das, Saroj Kr Biswas, and Biswajit Purkayastha. 2023. Automated Indian sign language recognition system
+byfusing deepand handcraftedfeature. Multimedia ToolsAppl. 82,11(2023),16905–16927.
+[15] Soumen Das, Saroj Kr Biswas, and Biswajit Purkayastha. 2023. A deep sign language recognition system for Indian
+sign language. Neural Comput.Appl. 35,2(2023),1469–1481.
+[16] SoumenDas,ManomitaChakraborty,BiswajitPurkayastha,etal.2021.Areviewonsignlanguagerecognition(SLR)
+system:MLandDLforSLR.In ProceedingsoftheIEEEInternationalConferenceonIntelligentSystems,SmartandGreen
+Technologies (ICISSGT’21) . IEEE, 177–182.
+[17] Sunanda Das, Md Samir Imtiaz, Nieb Hasan Neom, Nazmul Siddique, and Hui Wang. 2023. A hybrid approach for
+bangla sign language recognition using deep transfer learning model with random forest classifier. Expert Syst. Appl.
+213(2023),118914.
+[18] JiaDeng,WeiDong,RichardSocher,Li-JiaLi,KaiLi,andLiFei-Fei.2009.Imagenet:Alarge-scalehierarchicalimage
+database.In Proceedings of theIEEEConferenceonComputerVisionand PatternRecognition . IEEE, 248–255.
+[19] NainaDhingraandAndreasKunz.2019.Res3atn-deep3dresidualattentionnetworkforhandgesturerecognitionin
+videos. In Proceedings of theInternational Conferenceon3DVision(3DV’19) . IEEE, 491–501.
+[20] Eman K. Elsayed and Doaa R. Fathy. 2021. Semantic deep learning to translate dynamic sign language. Int. J. Intell.
+Eng.Syst. 14(2021).
+[21] SevgiZ.Gurbuz,AliCaferGurbuz,EvieA.Malaia,DarrinJ.Griffin,ChrisS.Crawford,MohammadMahbuburRahman,
+Emre Kurtoglu, Ridvan Aksu, Trevor Macks, and Robiulhossain Mdrafi. 2020. American sign language recognition
+using rf sensing. IEEESens.J. 21,3(2020),3763–3775.
+[22] Nguyen Ngoc Hoang, Guee-Sang Lee, Soo-Hyung Kim, and Hyung-Jeong Yang. 2018. A real-time multimodal hand
+gesturerecognitionvia3Dconvolutionalneuralnetworkandkeyframeextraction.In ProceedingsoftheInternational
+ConferenceonMachine Learning and Machine Intelligence .32–37.
+[23] AlAminHosain,PanneerSelvamSanthalingam,ParthPathak,HuzefaRangwala,andJanaKosecka.2021.Handpose
+guided 3d pooling for word-level sign language recognition. In Proceedings of the IEEE/CVF Winter Conference on
+Applications of ComputerVision .3429–3439.
+[24] YanglaiHuang,JingHuang,XiaoyueWu,andYuJia.2022.DynamicsignlanguagerecognitionbasedonCBAMwith
+autoencoder timeseries neuralnetwork. Mobile Inf.Syst. 2022(2022).
+[25] Gautham Jayadeep, N. V. Vishnupriya, Vyshnavi Venugopal, S. Vishnu, and M. Geetha. 2020. Mudra: Convolutional
+neural network basedIndiansign languagetranslator for banks.In Proceedings ofthe4th International Conferenceon
+IntelligentComputing andControlSystems (ICICCS’20) .IEEE, 1228–1232.
+[26] VijayJohn,AliBoyali,SeiichiMita,MasayukiImanishi,andNorioSanma.2016.Deeplearning-basedfasthandgesture
+recognition using representative frames. In Proceedings of the International Conference on Digital Image Computing:
+Techniques and Applications (DICTA’16) .IEEE, 1–8.
+[27] Samina Khalid, Tehmina Khalil, and Shamila Nasreen. 2014. A survey of feature selection and feature extraction
+techniques inmachinelearning.In Proceedings oftheScience and Information Conference .IEEE, 372–378.
+[28] Tae-Kyun Kim, Shu-Fai Wong, and Roberto Cipolla. 2007. Tensor canonical correlation analysis for action classifica-
+tion. InProceedings oftheIEEEConferenceonComputerVision andPattern Recognition . IEEE, 1–8.
+[29] OscarKoller,SepehrZargaran,andHermannNey.2017.Re-sign:Re-alignedend-to-endsequencemodellingwithdeep
+recurrent CNN-HMMs. In Proceedings of theIEEEConferenceonComputer Visionand PatternRecognition . 4297–4305.
+[30] NareshKumar.2017.Signlanguagerecognitionforhearingimpairedpeoplebasedonhandssymbolsclassification.In
+ProceedingsoftheInternationalConferenceonComputing,CommunicationandAutomation(ICCCA’17) .IEEE,244–249.
+[31] NareshKumarandNagarajanSukavanam.2017.Deepnetworkarchitectureforlargescalevisuadetectionandrecog-
+nition issues. J.Inf.Assur.Secur. 12,6(2017).
+[32] PratikLikhar,NeelKamalBhagat,andG.N.Rathna.2020.Deeplearningmethodsforindiansignlanguagerecognition.
+InProceedings of theIEEE10th International ConferenceonConsumerElectronics (ICCE-Berlin’20) .IEEE, 1–6.
+[33] KianMingLim,AlanW.C.Tan,andShingChiangTan.2016.Block-basedhistogramofopticalflowforisolatedsign
+languagerecognition. J.Vis.Commun. Image Represent. 40(2016),538–545.
+[34] Wei-Syun Lin, Yi-Leh Wu, Wei-Chih Hung, and Cheng-Yuan Tang. 2013. A study of real-time hand gesture recog-
+nition using SIFT on binary images. In Advances in Intelligent Systems and Applications-Volume 2: Proceedings of the
+International Computer Symposium (ICS’12) . Springer,235–246.
+ACM Trans. Asian Low-Resour. Lang.Inf.Process., Vol. 23,No. 3,Article37.Publicationdate:March 2024.37:22 S.Das et al.
+[35] Li Liu and Ling Shao. 2013. Synthesis of spatio-temporal descriptors for dynamic hand gesture recognition using
+genetic programming. In Proceedings of the 10th IEEE International Conference and Workshops on Automatic Face and
+GestureRecognition (FG’13) . IEEE, 1–7.
+[36] Yui ManLui.2012.Human gesturerecognition on product manifolds. J.Mach.Learn. Res. 13,1(2012),3297–3321.
+[37] Yui Man Lui and J. Ross Beveridge. 2011. Tangent bundle for human action recognition. In Proceedings of the IEEE
+International Conferenceon Automatic Face & Gesture Recognition (FG’11) .IEEE, 97–102.
+[38] Mizuki Maruyama, Shuvozit Ghose, Katsufumi Inoue, Partha Pratim Roy, Masakazu Iwamura, and Michifumi Yosh-
+ioka.2021.Word-levelsignlanguagerecognitionwithmulti-streamneuralnetworksfocusingonlocalregions. arXiv
+preprintarXiv:2106.15989 (2021).
+[39] Sarfaraz Masood, Adhyan Srivastava, Harish Chandra Thuwal, and Musheer Ahmad. 2018. Real-time sign language
+gesture(word)recognitionfromvideosequencesusingCNNandRNN.In IntelligentEngineeringInformatics:Proceed-
+ings ofthe6th International ConferenceonFICTA .Springer, 623–632.
+[40] Anshul Mittal,Pradeep Kumar,Partha Pratim Roy, RamanBalasubramanian,and Bidyut B.Chaudhuri. 2019.A mod-
+ifiedLSTMmodelforcontinuoussignlanguagerecognitionusingleapmotion. IEEESens.J. 19,16(2019),7056–7063.
+[41] Geovane M. Ramos Neto, Geraldo Braz Junior, João Dallyson Sousa de Almeida, and Anselmo Cardoso de Paiva.
+2018. Sign language recognition based on 3d convolutional neural networks. In Image Analysis and Recognition: 15th
+International Conference(ICIAR’18) .Springer, 399–407.
+[42] Eng-JonOng,HelenCooper,NicolasPugeault,andRichardBowden.2012.Signlanguagerecognitionusingsequential
+patterntrees. In Proceedings oftheIEEEConferenceonComputer VisionandPattern Recognition . IEEE, 2200–2207.
+[43] Wei Pan, Xiongquan Zhang, and Zhongfu Ye. 2020. Attention-based sign language recognition network utilizing
+keyframesamplingand skeletalfeatures. IEEEAccess 8(2020),215592–215602.
+[44] Md Abdur Rahim, Jungpil Shin, and Md Rashedul Islam. 2019. Dynamic hand gesture based sign word recognition
+using convolutional neural network with feature fusion. In Proceedings of the IEEE 2nd International Conference on
+KnowledgeInnovationandInvention(ICKII’19) . IEEE, 221–224.
+[45] E.Rajalakshmi,R.Elakkiya,AlexeyL.Prikhodko,M.G.Grif,MaximA.Bakaev,JatinderkumarR.Saini,KetanKotecha,
+and V. Subramaniyaswamy. 2022. Static and dynamic isolated Indian and Russian sign language recognition with
+spatialandtemporalfeaturedetectionusinghybridneuralnetwork. ACMTrans.AsianLow-Resour.Lang.Inf.Process.
+22,1 (2022),1–23.
+[46] E.Rajalakshmi,R.Elakkiya,V.Subramaniyaswamy,L.PrikhodkoAlexey,GrifMikhail,MaximBakaev,KetanKotecha,
+Lubna Abdelkareim Gabralla, and Ajith Abraham. 2023. Multi-semantic discriminative feature learning for sign ges-
+turerecognition using hybrid deep neuralarchitecture. IEEEAccess 11(2023),2226–2238.
+[47] Razieh Rastgoo, Kourosh Kiani, and Sergio Escalera. 2020. Hand sign language recognition using multi-view hand
+skeleton. ExpertSyst. Appl. 150(2020),113336.
+[48] RaziehRastgoo,KouroshKiani,andSergioEscalera.2021.Signlanguagerecognition:Adeepsurvey. ExpertSyst.Appl.
+164(2021),113794.
+[49] JeffersonRodríguezandFabioMartínez.2018.Towardson-linesignlanguagerecognitionusingcumulativeSD-VLAD
+descriptors. In Advances in Computing: 13th Colombian Conference (CCC’18) .Springer, 371–385.
+[50] Franco Ronchetti, Facundo Quiroga, César Armando Estrebou, Laura Cristina Lanzarini, and Alejandro Rosete. 2016.
+LSA64:An argentiniansignlanguagedataset.In XXII CongresoArgentinode Ciencias de laComputación (CACIC’16).
+[51] Andres Sanin, Conrad Sanderson, Mehrtash T. Harandi, and Brian C Lovell. 2013. Spatio-temporal covariance de-
+scriptors for action and gesture recognition. In Proceedings of the IEEE Workshop on Applications of Computer Vision
+(WACV’13) .IEEE, 103–110.
+[52] ElhamSaraee,MonaJalal,andMargritBetke.2020.Visualcomplexityanalysisusingdeepintermediate-layerfeatures.
+Comput.Vis.Image Understand. 195(2020),102949.
+[53] N.K.SenthilKumarandN.Malarvizhi. 2020.Bi-directional LSTM–CNNcombinedmethodfor sentimentanalysisin
+partof speech tagging(PoS). Int.J.Speech Technol. 23(2020),373–380.
+[54] JaiAmrish Shah etal.2018. Deepsign: A Deep-learning Architecture for Sign Language . Ph.D.Dissertation.
+[55] Dushyant Kumar Singh. 2021. 3d-cnn based dynamic gesture recognition for indian sign language modeling. Proc.
+Comput.Sci. 189(2021),76–83.
+[56] MemonaTariq,AyeshaIqbal,AyshaZahid,ZainabIqbal,andJunaidAkhtar.2012.Signlanguagelocalization:Learning
+toeliminatelanguagedialects.In Proceedings of the15th International Multitopic Conference (INMIC’12) .IEEE, 17–22.
+[57] AdithyaVenugopalanandRajeshReghunadhan.2021.Applyingdeepneuralnetworksfortheautomaticrecognition
+of signlanguagewords:A communicationaid todeaf agriculturists. ExpertSyst.Appl. 185(2021),115601.
+[58] Adithya Venugopalan and Rajesh Reghunadhan. 2023. Applying hybrid deep neural network for the recognition of
+signlanguagewords used bythe deafCOVID-19patients. Arab. J.Sci. Eng. 48,2(2023),1349–1362.
+[59] Ulrich Von Agris, Jörg Zieren, Ulrich Canzler, Britta Bauer, and Karl-Friedrich Kraiss. 2008. Recent developments in
+visual sign languagerecognition. Univ.Access Inf.Soc. 6(2008),323–362.
+ACMTrans. Asian Low-Resour. Lang.Inf.Process., Vol.23,No. 3,Article 37.Publicationdate:March 2024.An ExpertSystem forISL Recognition Using Spatial Attention-based Feature 37:23
+[60] SanghyunWoo,JongchanPark,Joon-YoungLee,andInSoKweon.2018.Cbam:Convolutionalblockattentionmodule.
+InProceedings of theEuropean ConferenceonComputerVision(ECCV’18) .3–19.
+[61] Hee-DeokYangandSeong-WhanLee.2013.Robustsignlanguagerecognitionbycombiningmanualandnon-manual
+featuresbasedonconditionalrandomfieldandsupportvectormachine. PatternRecogn.Lett. 34,16(2013),2051–2056.
+[62] Yi Yao and Chang-Tsun Li. 2012. Hand posture recognition using SURF with adaptive boosting. In British Machine
+VisionConference .
+[63] Mahmoud M. Zaki and Samir I. Shaheen. 2011. Sign language recognition using a combination of new vision based
+features.Pattern Recogn. Lett. 32,4(2011),572–577.
+[64] Erhu Zhang, Botao Xue, Fangzhou Cao, Jinghong Duan, Guangfeng Lin, and Yifei Lei. 2019. Fusion of 2D CNN and
+3DDenseNetfor dynamicgesturerecognition. Electronics 8,12(2019),1511.
+[65] ShujunZhangandQunZhang.2021.Signlanguagerecognitionbasedonglobal-localattention. J.Vis.Commun.Image
+Represent. 80(2021),103280.
+Received 4March 2023; revised 20November 2023; accepted 23January 2024
+ACM Trans. Asian Low-Resour. Lang.Inf.Process., Vol. 23,No. 3,Article37.Publicationdate:March 2024.

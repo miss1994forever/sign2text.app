@@ -226,9 +226,10 @@ struct SkeletonOverlay: View {
 
     private func mapPoints(to canvasSize: CGSize) -> [RenderedSkeletonPoint] {
         let sourceSize = skeletonFrame.sourceSize
-        let scale = max(canvasSize.width / sourceSize.width, canvasSize.height / sourceSize.height)
-        let scaledWidth = sourceSize.width * scale
-        let scaledHeight = sourceSize.height * scale
+        let transformedSourceSize = CGSize(width: sourceSize.height, height: sourceSize.width)
+        let scale = max(canvasSize.width / transformedSourceSize.width, canvasSize.height / transformedSourceSize.height)
+        let scaledWidth = transformedSourceSize.width * scale
+        let scaledHeight = transformedSourceSize.height * scale
         let xOffset = (canvasSize.width - scaledWidth) / 2
         let yOffset = (canvasSize.height - scaledHeight) / 2
 
@@ -247,8 +248,10 @@ struct SkeletonOverlay: View {
     }
 
     private func transform(_ point: SkeletonKeypoint, within sourceSize: CGSize) -> CGPoint {
-        // 180-degree clockwise rotation
-        return CGPoint(x: sourceSize.width - point.x, y: sourceSize.height - point.y)
+        // Match the portrait camera preview: rotate counter-clockwise, then mirror for front camera.
+        let rotated = CGPoint(x: point.y, y: sourceSize.width - point.x)
+        guard isMirrored else { return rotated }
+        return CGPoint(x: sourceSize.height - rotated.x, y: rotated.y)
     }
 
     private func drawConnections(
@@ -334,5 +337,4 @@ struct CameraPreview_Previews: PreviewProvider {
         .previewDisplayName("Camera Components")
     }
 }
-
 

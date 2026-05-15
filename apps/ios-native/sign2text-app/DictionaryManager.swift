@@ -21,6 +21,7 @@ class DictionaryManager: ObservableObject {
     
     private let userDefaults = UserDefaults.standard
     private let wordsKey = "SavedSignLanguageWords"
+    private let seedManifestName = "csl_daily_top800_dictionary_seed"
     
     // MARK: - Initialization
     
@@ -41,13 +42,16 @@ class DictionaryManager: ObservableObject {
         DispatchQueue.global(qos: .background).async { [weak self] in
             guard let self = self else { return }
             
-            let loadedWords = self.loadWordsFromUserDefaults()
+            let savedWords = self.loadWordsFromUserDefaults()
+            let loadedWords = self.shouldReplaceWithSeed(savedWords)
+                ? (self.loadSeedWords() ?? savedWords)
+                : savedWords
             
             DispatchQueue.main.async {
                 self.words = loadedWords
                 self.isLoading = false
                 
-                // Add sample words if dictionary is empty
+                // Add sample words if dictionary is empty and no seed dictionary is bundled.
                 if self.words.isEmpty {
                     self.loadSampleWords()
                 }
@@ -131,6 +135,76 @@ class DictionaryManager: ObservableObject {
             }
         }
     }
+
+    private func shouldReplaceWithSeed(_ words: [SignLanguageWord]) -> Bool {
+        guard seedManifestURL() != nil else { return false }
+        if words.isEmpty { return true }
+
+        let looksLikeDefaultSamples = words.count <= 7
+            && words.allSatisfy { $0.mediaFiles.isEmpty && $0.addedBy == "System" }
+        return looksLikeDefaultSamples
+    }
+
+    private func loadSeedWords() -> [SignLanguageWord]? {
+        guard let manifestURL = seedManifestURL() else {
+            print("📚 No bundled CSL-Daily dictionary seed found")
+            return nil
+        }
+
+        do {
+            let data = try Data(contentsOf: manifestURL)
+            let manifest = try JSONDecoder().decode(DictionarySeedManifest.self, from: data)
+            let words = manifest.entries.map { entry in
+                SignLanguageWord(
+                    word: entry.word,
+                    description: entry.description,
+                    category: SignLanguageCategory(rawValue: entry.category) ?? .general,
+                    mediaFiles: entry.mediaFiles.map { media in
+                        MediaFile(
+                            fileName: media.fileName,
+                            type: MediaFile.MediaType(rawValue: media.type) ?? .image,
+                            localPath: media.localPath,
+                            cloudURL: media.cloudURL,
+                            fileSize: media.fileSize,
+                            duration: media.duration,
+                            thumbnail: media.thumbnail,
+                            dateCreated: Date(),
+                            isCloudSynced: false
+                        )
+                    },
+                    addedBy: "CSL-Daily"
+                )
+            }
+            print("📚 Loaded \(words.count) CSL-Daily seed words from \(manifestURL.path)")
+            return words
+        } catch {
+            DispatchQueue.main.async { [weak self] in
+                self?.errorMessage = "Failed to load CSL-Daily dictionary seed."
+            }
+            print("📚 Failed to load seed dictionary: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    private func seedManifestURL() -> URL? {
+        if let bundled = Bundle.main.url(
+            forResource: seedManifestName,
+            withExtension: "json",
+            subdirectory: "DictionarySeed"
+        ) {
+            return bundled
+        }
+
+        let documentsSeed = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+            .first?
+            .appendingPathComponent("DictionarySeed")
+            .appendingPathComponent("\(seedManifestName).json")
+        if let documentsSeed, FileManager.default.fileExists(atPath: documentsSeed.path) {
+            return documentsSeed
+        }
+
+        return nil
+    }
     
     private func loadSampleWords() {
         print("📚 Loading sample words...")
@@ -196,4 +270,25 @@ class DictionaryManager: ObservableObject {
         isCloudSyncEnabled = false
         print("📚 Cloud sync disabled")
     }
+}
+
+private struct DictionarySeedManifest: Decodable {
+    let entries: [DictionarySeedEntry]
+}
+
+private struct DictionarySeedEntry: Decodable {
+    let word: String
+    let description: String?
+    let category: String
+    let mediaFiles: [DictionarySeedMediaFile]
+}
+
+private struct DictionarySeedMediaFile: Decodable {
+    let fileName: String
+    let type: String
+    let localPath: String?
+    let cloudURL: String?
+    let fileSize: Int64
+    let duration: TimeInterval?
+    let thumbnail: String?
 }

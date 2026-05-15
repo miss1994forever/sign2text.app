@@ -312,20 +312,8 @@ struct WordCard: View {
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 8) {
-                // Image placeholder or actual image
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(themeManager.colors.secondaryBackground)
+                DictionaryMediaImage(word: word, themeManager: themeManager)
                     .frame(height: 120)
-                    .overlay(
-                        VStack {
-                            Image(systemName: "photo")
-                                .font(.title)
-                                .foregroundColor(themeManager.colors.secondaryText)
-                            Text("No Image")
-                                .font(.caption)
-                                .foregroundColor(themeManager.colors.secondaryText)
-                        }
-                    )
 
                 // Word information
                 VStack(alignment: .leading, spacing: 4) {
@@ -352,7 +340,7 @@ struct WordCard: View {
 
                         Spacer()
 
-                        Text("No images")
+                        Text(imageCountText)
                             .font(.caption2)
                             .foregroundColor(themeManager.colors.secondaryText)
                     }
@@ -365,6 +353,100 @@ struct WordCard: View {
             .shadow(color: themeManager.colors.shadow, radius: 2, x: 0, y: 1)
         }
         .buttonStyle(PlainButtonStyle())
+    }
+
+    private var imageCountText: String {
+        let count = word.mediaFiles.filter { $0.type == .image }.count
+        return count == 1 ? "1 image" : "\(count) images"
+    }
+}
+
+private struct DictionaryMediaImage: View {
+    let word: SignLanguageWord
+    let themeManager: ThemeManager
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(themeManager.colors.secondaryBackground)
+
+            #if canImport(UIKit)
+                if let image = loadImage() {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipped()
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                } else {
+                    placeholder
+                }
+            #else
+                placeholder
+            #endif
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var placeholder: some View {
+        VStack {
+            Image(systemName: "photo")
+                .font(.title)
+                .foregroundColor(themeManager.colors.secondaryText)
+            Text("No Image")
+                .font(.caption)
+                .foregroundColor(themeManager.colors.secondaryText)
+        }
+    }
+
+    #if canImport(UIKit)
+        private func loadImage() -> UIImage? {
+            guard let media = word.mediaFiles.first(where: { $0.type == .image }) else { return nil }
+            guard let url = mediaURL(for: media) else { return nil }
+            return UIImage(contentsOfFile: url.path)
+        }
+    #endif
+
+    private func mediaURL(for media: MediaFile) -> URL? {
+        let candidates = [media.thumbnail, media.localPath, media.fileName].compactMap { $0 }
+
+        for candidate in candidates {
+            if let absoluteURL = URL(string: candidate), absoluteURL.isFileURL,
+                FileManager.default.fileExists(atPath: absoluteURL.path)
+            {
+                return absoluteURL
+            }
+
+            if let bundleURL = bundledMediaURL(relativePath: candidate) {
+                return bundleURL
+            }
+
+            if let documentsURL = documentsMediaURL(relativePath: candidate) {
+                return documentsURL
+            }
+        }
+
+        return nil
+    }
+
+    private func bundledMediaURL(relativePath: String) -> URL? {
+        guard let resourceURL = Bundle.main.resourceURL else { return nil }
+        let normalized = normalizedSeedPath(relativePath)
+        let url = resourceURL.appendingPathComponent(normalized)
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
+    private func documentsMediaURL(relativePath: String) -> URL? {
+        guard let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            return nil
+        }
+        let normalized = normalizedSeedPath(relativePath)
+        let url = documentsURL.appendingPathComponent(normalized)
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
+    private func normalizedSeedPath(_ path: String) -> String {
+        path.hasPrefix("DictionarySeed/") ? path : "DictionarySeed/\(path)"
     }
 }
 
@@ -489,4 +571,3 @@ struct DictionaryView_Previews: PreviewProvider {
             .environmentObject(ThemeManager())
     }
 }
-

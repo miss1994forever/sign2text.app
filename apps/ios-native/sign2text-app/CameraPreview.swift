@@ -249,7 +249,7 @@ struct SkeletonOverlay: View {
 
     private func transform(_ point: SkeletonKeypoint, within sourceSize: CGSize) -> CGPoint {
         // Match the portrait camera preview: rotate counter-clockwise, then mirror for front camera.
-        let rotated = CGPoint(x: point.y, y: sourceSize.width - point.x)
+        let rotated = CGPoint(x: point.y, y: point.x)
         guard isMirrored else { return rotated }
         return CGPoint(x: sourceSize.height - rotated.x, y: rotated.y)
     }
@@ -337,4 +337,3 @@ struct CameraPreview_Previews: PreviewProvider {
         .previewDisplayName("Camera Components")
     }
 }
-

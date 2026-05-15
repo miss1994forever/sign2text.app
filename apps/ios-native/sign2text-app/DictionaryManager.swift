@@ -90,6 +90,16 @@ class DictionaryManager: ObservableObject {
     func getWords(in category: SignLanguageCategory) -> [SignLanguageWord] {
         return words.filter { $0.category == category }
     }
+
+    func reloadSeedDictionary() {
+        guard let seedWords = loadSeedWords() else {
+            errorMessage = "CSL-Daily seed dictionary is not available in the app bundle."
+            return
+        }
+
+        words = seedWords
+        saveWords()
+    }
     
     // MARK: - Private Methods
     

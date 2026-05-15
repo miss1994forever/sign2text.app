@@ -106,6 +106,10 @@ struct DictionaryView: View {
 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
+                        Button("Load CSL-Daily Seed") {
+                            dictionaryManager.reloadSeedDictionary()
+                        }
+
                         Button("Import from Photos") {
                             // TODO: Implement import functionality
                         }

@@ -23,13 +23,16 @@ import SwiftUI
 
         func makeUIView(context: Context) -> CameraPreviewView {
             let view = CameraPreviewView()
-            // Add the layer as soon as the view is made
+            view.backgroundColor = .black
             view.layer.addSublayer(previewLayer)
+            previewLayer.frame = view.bounds
             return view
         }
 
         func updateUIView(_ uiView: CameraPreviewView, context: Context) {
-            // The frame will be updated by the layoutSubviews in the CameraPreviewView
+            DispatchQueue.main.async {
+                self.previewLayer.frame = uiView.bounds
+            }
         }
     }
 
@@ -38,17 +41,11 @@ import SwiftUI
     class CameraPreviewView: UIView {
         override func layoutSubviews() {
             super.layoutSubviews()
-
-            // Update all sublayers to match the view bounds
             layer.sublayers?.forEach { sublayer in
-                if let previewLayer = sublayer as? AVCaptureVideoPreviewLayer {
-                    previewLayer.frame = bounds
+                if sublayer is AVCaptureVideoPreviewLayer {
+                    sublayer.frame = bounds
                 }
             }
-        }
-
-        override class var layerClass: AnyClass {
-            return CALayer.self
         }
     }
 
@@ -236,9 +233,10 @@ struct SkeletonOverlay: View {
         let yOffset = (canvasSize.height - scaledHeight) / 2
 
         return skeletonFrame.keypoints.enumerated().map { index, point in
+            let transformedPoint = transform(point, within: skeletonFrame.sourceSize)
             let location = CGPoint(
-                x: xOffset + point.x * scale,
-                y: yOffset + point.y * scale
+                x: xOffset + transformedPoint.x * scale,
+                y: yOffset + transformedPoint.y * scale
             )
             let isHandPoint = (91 ... 132).contains(index)
             let color = isHandPoint
@@ -246,6 +244,11 @@ struct SkeletonOverlay: View {
                 : Color(red: 0.2, green: 0.95, blue: 0.7)
             return RenderedSkeletonPoint(location: location, confidence: point.confidence, color: color, isHandPoint: isHandPoint)
         }
+    }
+
+    private func transform(_ point: SkeletonKeypoint, within sourceSize: CGSize) -> CGPoint {
+        // 180-degree clockwise rotation
+        return CGPoint(x: sourceSize.width - point.x, y: sourceSize.height - point.y)
     }
 
     private func drawConnections(
@@ -311,98 +314,22 @@ struct CameraFocusIndicator: View {
     }
 }
 
-// MARK: - Camera Permission View
-
-struct CameraPermissionView: View {
-    let onSettingsButtonTapped: () -> Void
-    let onRetryButtonTapped: () -> Void
-
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.85)
-                .edgesIgnoringSafeArea(.all)
-
-            VStack(spacing: 20) {
-                Image(systemName: "camera.fill")
-                    .font(.system(size: 60))
-                    .foregroundColor(.white)
-
-                Text("Camera Permission Required")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-
-                Text(
-                    "SignScribe needs camera access to translate sign language into text in real-time. Please enable camera access in your device settings."
-                )
-                .foregroundColor(.white.opacity(0.8))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-
-                VStack(spacing: 12) {
-                    Button(action: onSettingsButtonTapped) {
-                        HStack {
-                            Image(systemName: "gear")
-                            Text("Open Settings")
-                        }
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
-                        .frame(width: 200, height: 50)
-                        .background(Color.blue)
-                        .cornerRadius(10)
-                    }
-
-                    Button(action: onRetryButtonTapped) {
-                        HStack {
-                            Image(systemName: "arrow.clockwise")
-                            Text("Try Again")
-                        }
-                        .fontWeight(.medium)
-                        .foregroundColor(.blue)
-                        .frame(width: 200, height: 50)
-                        .background(Color.clear)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(Color.blue, lineWidth: 1)
-                        )
-                    }
-                }
-                .padding(.top, 10)
-            }
-            .padding()
-        }
-    }
-}
-
 // MARK: - Preview Provider
 
 struct CameraPreview_Previews: PreviewProvider {
     static var previews: some View {
-        VStack {
-            // Mock camera preview
-            Rectangle()
-                .fill(Color.black)
-                .frame(height: 400)
-                .overlay(
-                    CameraOverlay(
-                        isTranslating: true,
-                        isRecording: true,
-                        frameCount: 1250,
-                        fps: 29.8
-                    )
+        Rectangle()
+            .fill(Color.black)
+            .frame(height: 400)
+            .overlay(
+                CameraOverlay(
+                    isTranslating: true,
+                    isRecording: true,
+                    frameCount: 1250,
+                    fps: 29.8
                 )
-                .cornerRadius(12)
-
-            Spacer()
-
-            // Permission view preview
-            CameraPermissionView(
-                onSettingsButtonTapped: {},
-                onRetryButtonTapped: {}
             )
-            .frame(height: 300)
-        }
+            .cornerRadius(12)
         .previewLayout(.sizeThatFits)
         .previewDisplayName("Camera Components")
     }

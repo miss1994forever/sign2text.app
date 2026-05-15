@@ -366,14 +366,18 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
     private func configureVideoOutputConnection() {
         guard let connection = videoOutput.connection(with: .video) else { return }
 
-        // Mirror for front camera (natural for sign language users)
-        if connection.isVideoMirroringSupported && currentCameraInput?.device.position == .front {
-            connection.isVideoMirrored = true
-            print("📷 Video mirroring enabled for front camera")
+        applyVideoConnectionSettings(to: connection)
+    }
+
+    private func applyVideoConnectionSettings(to connection: AVCaptureConnection) {
+        if connection.isVideoMirroringSupported {
+            connection.automaticallyAdjustsVideoMirroring = false
+            connection.isVideoMirrored = currentCameraInput?.device.position == .front
         }
 
+        print("📷 Video mirroring \(connection.isVideoMirrored ? "enabled" : "disabled") for \(currentCameraInput?.device.position == .front ? "front" : "back") camera")
+
         #if os(iOS)
-            // Set orientation for optimal gesture capture
             if #available(iOS 17.0, *) {
                 let rotationAngle: CGFloat = (currentCameraInput?.device.position == .front) ? 270 : 90
                 if connection.isVideoRotationAngleSupported(rotationAngle) {

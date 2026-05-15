@@ -25,7 +25,6 @@ struct ContentView: View {
     @State private var showingDictionary = false
     @State private var showingSettings = false
     @State private var showingHistory = false
-    @State private var showPermissionAlert = false
 
     var body: some View {
         NavigationView {
@@ -88,6 +87,7 @@ struct ContentView: View {
                             .overlay(
                                 Group {
                                     if translationService.isTranslating,
+                                        translationService.isSkeletonOverlayEnabled,
                                         let skeletonFrame = translationService.latestSkeletonFrame
                                     {
                                         SkeletonOverlay(
@@ -145,14 +145,6 @@ struct ContentView: View {
                         if cameraManager.permissionGranted {
                             cameraManager.startSession()
                         }
-                    }
-                    .alert("Camera Permission Required", isPresented: $showPermissionAlert) {
-                        Button("Open Settings", role: .none) {
-                            if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
-                                UIApplication.shared.open(settingsURL)
-                            }
-                        }
-                        Button("Cancel", role: .cancel) {}
                     }
 
                     // Transcription Section
@@ -316,62 +308,6 @@ struct ContentView: View {
                     .padding(.bottom, 30)
                 }
 
-                if !cameraManager.permissionGranted {
-                    ZStack {
-                        themeManager.colors.background.opacity(0.95)
-                            .edgesIgnoringSafeArea(.all)
-
-                        VStack(spacing: 20) {
-                            Image(systemName: "camera.fill")
-                                .font(.system(size: 60))
-                                .foregroundColor(themeManager.colors.primaryText)
-
-                            Text("Camera Permission Required")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(themeManager.colors.primaryText)
-                                .multilineTextAlignment(.center)
-
-                            Text(
-                                "SignScribe needs camera access to translate sign language into text in real-time."
-                            )
-                            .foregroundColor(themeManager.colors.secondaryText)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
-
-                            VStack(spacing: 12) {
-                                Button(action: openSettings) {
-                                    HStack {
-                                        Image(systemName: "gear")
-                                        Text("Open Settings")
-                                    }
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.white)
-                                    .frame(width: 200, height: 50)
-                                    .background(themeManager.colors.accent)
-                                    .cornerRadius(10)
-                                }
-
-                                Button(action: { cameraManager.checkPermission() }) {
-                                    HStack {
-                                        Image(systemName: "arrow.clockwise")
-                                        Text("Try Again")
-                                    }
-                                    .fontWeight(.medium)
-                                    .foregroundColor(themeManager.colors.accent)
-                                    .frame(width: 200, height: 50)
-                                    .background(Color.clear)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 10)
-                                            .stroke(themeManager.colors.accent, lineWidth: 1)
-                                    )
-                                }
-                            }
-                            .padding(.top, 10)
-                        }
-                        .padding()
-                    }
-                }
             }
         }
         #if os(iOS)
@@ -474,11 +410,6 @@ struct ContentView: View {
         #endif
     }
 
-    private func openSettings() {
-        if let url = URL(string: UIApplication.openSettingsURLString) {
-            UIApplication.shared.open(url)
-        }
-    }
 }
 
 // MARK: - Supporting Classes

@@ -124,6 +124,14 @@ struct SettingsView: View {
                         }
                     }
 
+                    Toggle(
+                        "Skeleton Overlay",
+                        isOn: Binding(
+                            get: { translationService.isSkeletonOverlayEnabled },
+                            set: { translationService.setSkeletonOverlayEnabled($0) }
+                        )
+                    )
+
                     HStack {
                         Text("Frame Rate")
                         Spacer()

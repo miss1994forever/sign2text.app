@@ -24,12 +24,13 @@ class TranslationService: ObservableObject {
     @Published var isTranslating = false
     @Published var isModelLoaded = false
     @Published var currentModel = "CSL-Daily"
-    @Published var selectedPreset: RecognitionBackendPreset = Self.loadSelectedPreset()
+    @Published var selectedPreset: RecognitionBackendPreset
     @Published var currentTranslation: String = ""
-    @Published var backendURL: String = Self.loadBackendURL(for: Self.loadSelectedPreset())
+    @Published var backendURL: String
     @Published var connectionStatus = "Disconnected"
     @Published var lastErrorMessage: String?
     @Published var latestSkeletonFrame: SkeletonOverlayFrame?
+    @Published var isSkeletonOverlayEnabled: Bool
     
     // MARK: - Translation Session Management
     
@@ -71,6 +72,7 @@ class TranslationService: ObservableObject {
     private let maxEncodedFrameDimension: CGFloat = 320
 
     private static let selectedPresetStorageKey = "sign2text.selectedPreset"
+    private static let skeletonOverlayStorageKey = "sign2text.skeletonOverlayEnabled"
 
     private var backendSessionId: String?
     private var frameIndex = 0
@@ -85,6 +87,10 @@ class TranslationService: ObservableObject {
     // MARK: - Initialization
 
     init() {
+        let initialPreset = Self.loadSelectedPreset()
+        self.selectedPreset = initialPreset
+        self.backendURL = Self.loadBackendURL(for: initialPreset)
+        self.isSkeletonOverlayEnabled = UserDefaults.standard.object(forKey: Self.skeletonOverlayStorageKey) as? Bool ?? true
         currentModel = selectedPreset.title
         refreshBackendHealth()
     }
@@ -115,12 +121,13 @@ class TranslationService: ObservableObject {
     func processFrame(_ frame: CIImage) -> TranslationResult? {
         guard isTranslating else { return nil }
         let now = Date()
+        guard let submission = reserveFrameSubmission(at: now) else { return nil }
+
         guard let encodedFrame = encodeFrame(frame) else {
+            releaseFrameSubmission()
             publishError(SignLanguageError.processingFailed("Failed to encode camera frame"))
             return nil
         }
-
-        guard let submission = reserveFrameSubmission(at: now) else { return nil }
 
         Task {
             await submitFrame(
@@ -194,6 +201,16 @@ class TranslationService: ObservableObject {
         }
         UserDefaults.standard.set(preset.rawValue, forKey: Self.selectedPresetStorageKey)
         refreshBackendHealth()
+    }
+
+    func setSkeletonOverlayEnabled(_ enabled: Bool) {
+        DispatchQueue.main.async {
+            self.isSkeletonOverlayEnabled = enabled
+            if !enabled {
+                self.latestSkeletonFrame = nil
+            }
+        }
+        UserDefaults.standard.set(enabled, forKey: Self.skeletonOverlayStorageKey)
     }
 
     func refreshBackendHealth() {
@@ -290,10 +307,14 @@ class TranslationService: ObservableObject {
 
         do {
             let health: BackendHealthResponse = try await sendRequest(path: "/api/v1/health", method: "GET")
-            if !health.modelLoaded {
+            if !health.modelLoaded || !health.poseExtractorLoaded || (selectedPreset == .phoenix && !health.translationModelLoaded) {
                 let loaded: BackendHealthResponse = try await sendRequest(path: "/api/v1/runtime/load", method: "POST")
                 await MainActor.run {
                     self.isModelLoaded = loaded.modelLoaded
+                    self.currentModel = loaded.modelName
+                    if loaded.datasetPreset != self.selectedPreset.rawValue {
+                        self.lastErrorMessage = "Backend is running \(loaded.modelName) (\(loaded.datasetPreset)), but the app is set to \(self.selectedPreset.title)."
+                    }
                 }
             } else {
                 await MainActor.run {
@@ -389,6 +410,12 @@ class TranslationService: ObservableObject {
         }
     }
 
+    private func releaseFrameSubmission() {
+        stateQueue.sync {
+            isSendingFrame = false
+        }
+    }
+
     private func submitFrame(encodedFrame: EncodedFramePayload, frameIndex: Int, timestampMs: Int) async {
         guard let sessionId = stateQueue.sync(execute: { backendSessionId }) else {
             stateQueue.sync {
@@ -422,7 +449,7 @@ class TranslationService: ObservableObject {
                 submittedFrameCount += 1
                 let enoughFrames = submittedFrameCount % inferenceEveryNFrames == 0
                 let enoughTime = Date().timeIntervalSince(lastInferenceAt) >= inferenceInterval
-                guard enoughFrames || enoughTime else { return false }
+                guard enoughFrames && enoughTime else { return false }
                 guard !isInferring else { return false }
                 isInferring = true
                 lastInferenceAt = Date()

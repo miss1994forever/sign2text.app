@@ -111,6 +111,7 @@ def health() -> HealthResponse:
 @app.post("/api/v1/runtime/load", response_model=HealthResponse)
 def load_runtime() -> HealthResponse:
     runtime.load()
+    pose_extractor.load()
     if settings.enable_slt:
         try:
             slt_runtime.load()

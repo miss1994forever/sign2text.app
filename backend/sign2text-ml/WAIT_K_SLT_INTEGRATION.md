@@ -1,13 +1,26 @@
 # Wait-k SLT Integration Guide
 
-This document describes the practical steps required to extend the current Sign2Text backend from gloss-only Online CSLR output to real wait-k sign language translation text output.
+This document records the design used to extend the Sign2Text backend from gloss-only Online CSLR output to wait-k sign language translation text output.
 
 Current state:
 
 - the app streams RGB frames to `sign2text-ml`
 - the backend preprocesses the buffered session into Online CSLR tensors
-- the backend runs the Online CSLR model and returns gloss-like text in `response.text`
-- the backend does not yet invoke the Online SLT wait-k gloss-to-text model
+- the backend runs Online CSLR and retains its decoded output in `glossText`
+- the best gloss sequence is passed to `WaitKSLTRuntime`
+- translated natural language is returned in `translationText`
+- compatibility field `text` prefers `translationText` and falls back to `glossText`
+- `POST /api/v1/debug/translate-gloss` isolates G2T validation from the video pipeline
+
+Validation status (2026-09-28):
+
+- PHOENIX German `results/g2t_wait2/ckpts/best.ckpt`: full dev/test run completed;
+  test BLEU-4 is 23.49
+- CSL-Daily Chinese `results/g2t_wait2_csl_retrain_k2_20260920/ckpts/csl_best.ckpt`:
+  trained with wait-k=2 on the full training set and evaluated on full dev/test;
+  BLEU-4 is 20.16/20.17
+- the backend selects each checkpoint together with its matching config; CSL-Daily no longer
+  falls back to the 64-example smoke model when started with default settings
 
 Target state:
 
@@ -39,7 +52,8 @@ ls /home/haojun/projects/models/pretrained_models/mBart_de
 find /home/haojun/projects/SLRT/Online/SLT/results -maxdepth 3 -type f | head
 ```
 
-If the wait-k checkpoint is missing, the integration should stop here. The rest of the backend can be prepared, but real translation cannot run without that checkpoint.
+If the selected wait-k checkpoint is missing, start in explicit gloss-only mode or fail the
+SLT load visibly. Never silently pair a checkpoint with a config from a different model.
 
 ## 2. Keep The Runtime Split Clear
 
@@ -74,7 +88,7 @@ Use environment variables so the service can still run when SLT is unavailable:
 ```text
 SLRT_SLT_ROOT
 SLRT_SLT_CONFIG
-SLRT_SLT_CKPT
+SLRT_SLT_CHECKPOINT
 SIGN2TEXT_ENABLE_SLT
 ```
 

@@ -1,0 +1,7 @@
+# Python runtime artifacts
+__pycache__/
+*.py[cod]
+
+# Local service runtime state
+*.log
+*.pid

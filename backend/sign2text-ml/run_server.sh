@@ -13,8 +13,51 @@ export SLRT_ROOT="${SLRT_ROOT:-$WORKSPACE_ROOT/SLRT}"
 export SLRT_CSLR_ROOT="${SLRT_CSLR_ROOT:-$SLRT_ROOT/Online/CSLR}"
 export SLRT_SLT_ROOT="${SLRT_SLT_ROOT:-$SLRT_ROOT/Online/SLT}"
 export SLRT_DATASET_PRESET="${SLRT_DATASET_PRESET:-csl-daily}"
-export SLRT_CSLR_CHECKPOINT="${SLRT_CSLR_CHECKPOINT:-$WORKSPACE_ROOT/models/checkpoints/online_slrt/cslr_best.ckpt}"
-export SIGN2TEXT_ENABLE_SLT="${SIGN2TEXT_ENABLE_SLT:-0}"
+
+if [[ -z "${SLRT_CSLR_CHECKPOINT:-}" ]]; then
+  if [[ "$SLRT_DATASET_PRESET" == "phoenix" ]]; then
+    export SLRT_CSLR_CHECKPOINT="$WORKSPACE_ROOT/models/checkpoints/online_slrt/phoenix_2014t_islr_best.ckpt"
+  else
+    export SLRT_CSLR_CHECKPOINT="$WORKSPACE_ROOT/models/checkpoints/online_slrt/csl_daily_cslr_best.ckpt"
+  fi
+fi
+
+if [[ -z "${SLRT_SLT_CHECKPOINT:-}" ]]; then
+  if [[ "$SLRT_DATASET_PRESET" == "phoenix" ]]; then
+    export SLRT_SLT_CHECKPOINT="$SLRT_SLT_ROOT/results/g2t_wait2/ckpts/best.ckpt"
+  else
+    csl_g2t_candidates=(
+      "$SLRT_SLT_ROOT/results/g2t_wait2_csl_retrain_k2_20260920/ckpts/csl_best.ckpt"
+      "$WORKSPACE_ROOT/models/checkpoints/online_slrt/csl_daily_g2t_best.ckpt"
+      "$WORKSPACE_ROOT/models/checkpoints/online_slrt/csl_daily_g2t.ckpt"
+      "$SLRT_SLT_ROOT/results/g2t_wait2_csl/ckpts/best.ckpt"
+      "$SLRT_SLT_ROOT/results/g2t_wait2_csl/ckpts/step_1000.ckpt"
+      "$SLRT_SLT_ROOT/results/csl-daily_g2t/ckpts/step_1000.ckpt"
+      "$SLRT_SLT_ROOT/results/g2t_wait2_csl_top800_smoke_debug/ckpts/csl_best.ckpt"
+    )
+    for candidate in "${csl_g2t_candidates[@]}"; do
+      if [[ -f "$candidate" ]]; then
+        export SLRT_SLT_CHECKPOINT="$candidate"
+        break
+      fi
+    done
+  fi
+fi
+
+if [[ -z "${SLRT_SLT_CONFIG:-}" && "$SLRT_DATASET_PRESET" == "csl-daily" && \
+      "${SLRT_SLT_CHECKPOINT:-}" == *g2t_wait2_csl_retrain_k2_20260920* ]]; then
+  export SLRT_SLT_CONFIG="$SLRT_SLT_ROOT/configs/g2t_wait2_csl_retrain_k2_20260920.yaml"
+fi
+
+if [[ -z "${SIGN2TEXT_ENABLE_SLT:-}" ]]; then
+  if [[ "$SLRT_DATASET_PRESET" == "phoenix" ]]; then
+    export SIGN2TEXT_ENABLE_SLT=1
+  elif [[ -n "${SLRT_SLT_CHECKPOINT:-}" && "$SLRT_SLT_CHECKPOINT" != *smoke* ]]; then
+    export SIGN2TEXT_ENABLE_SLT=1
+  else
+    export SIGN2TEXT_ENABLE_SLT=0
+  fi
+fi
 PORT="${PORT:-6006}"
 
 cd "$SCRIPT_DIR"

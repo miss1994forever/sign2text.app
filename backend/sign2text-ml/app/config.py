@@ -46,9 +46,9 @@ def _default_cslr_checkpoint() -> Path:
         return Path(configured)
 
     if _default_dataset_preset() == "csl-daily":
-        return _workspace_root() / "models/checkpoints/online_slrt/cslr_best.ckpt"
+        return _workspace_root() / "models/checkpoints/online_slrt/csl_daily_cslr_best.ckpt"
 
-    return _workspace_root() / "models/checkpoints/online_slrt/best.ckpt"
+    return _workspace_root() / "models/checkpoints/online_slrt/phoenix_2014t_islr_best.ckpt"
 
 
 def _default_slt_config() -> Path:
@@ -57,7 +57,21 @@ def _default_slt_config() -> Path:
         return Path(configured)
 
     if _default_dataset_preset() == "csl-daily":
-        return _slt_root() / "configs/g2t_wait2_csl.yaml"
+        configured_checkpoint = os.getenv("SLRT_SLT_CHECKPOINT", "")
+        if configured_checkpoint:
+            lowered = configured_checkpoint.lower()
+            if "g2t_wait2_csl_retrain_k2_20260920" in lowered:
+                return _csl_waitk_config()
+            if "smoke" in lowered:
+                return _slt_root() / "configs/g2t_wait2_csl_top800_smoke.yaml"
+            return _slt_root() / "configs/g2t_csl.yaml"
+        if _csl_waitk_checkpoint().is_file():
+            return _csl_waitk_config()
+        if any(path.is_file() for path in _csl_standard_g2t_checkpoint_candidates()):
+            return _slt_root() / "configs/g2t_csl.yaml"
+        # Fall back to the local smoke artifact only when no trained checkpoint
+        # has been installed.
+        return _slt_root() / "configs/g2t_wait2_csl_top800_smoke.yaml"
 
     return _slt_root() / "configs/g2t_wait2.yaml"
 
@@ -66,7 +80,55 @@ def _default_enable_slt() -> bool:
     configured = os.getenv("SIGN2TEXT_ENABLE_SLT")
     if configured:
         return configured == "1"
-    return _default_dataset_preset() != "csl-daily"
+    if _default_dataset_preset() != "csl-daily":
+        return True
+
+    configured_checkpoint = os.getenv("SLRT_SLT_CHECKPOINT", "")
+    if configured_checkpoint:
+        return "smoke" not in configured_checkpoint.lower()
+    return any(path.is_file() for path in _csl_g2t_checkpoint_candidates()[:-1])
+
+
+def _csl_g2t_checkpoint_candidates() -> tuple[Path, ...]:
+    return (
+        _csl_waitk_checkpoint(),
+        *_csl_standard_g2t_checkpoint_candidates(),
+        _slt_root() / "results/g2t_wait2_csl_top800_smoke_debug/ckpts/csl_best.ckpt",
+    )
+
+
+def _csl_waitk_checkpoint() -> Path:
+    return _slt_root() / "results/g2t_wait2_csl_retrain_k2_20260920/ckpts/csl_best.ckpt"
+
+
+def _csl_waitk_config() -> Path:
+    return _slt_root() / "configs/g2t_wait2_csl_retrain_k2_20260920.yaml"
+
+
+def _csl_standard_g2t_checkpoint_candidates() -> tuple[Path, ...]:
+    return (
+        _workspace_root() / "models/checkpoints/online_slrt/csl_daily_g2t_best.ckpt",
+        # Legacy canonical name retained for backward compatibility.
+        _workspace_root() / "models/checkpoints/online_slrt/csl_daily_g2t.ckpt",
+        _slt_root() / "results/g2t_wait2_csl/ckpts/best.ckpt",
+        _slt_root() / "results/g2t_wait2_csl/ckpts/step_1000.ckpt",
+        _slt_root() / "results/csl-daily_g2t/ckpts/step_1000.ckpt",
+    )
+
+
+def _default_slt_checkpoint() -> str:
+    configured = os.getenv("SLRT_SLT_CHECKPOINT")
+    if configured:
+        return configured
+
+    if _default_dataset_preset() == "csl-daily":
+        for candidate in _csl_g2t_checkpoint_candidates():
+            if candidate.is_file():
+                return str(candidate)
+        return ""
+    else:
+        candidate = _slt_root() / "results/g2t_wait2/ckpts/best.ckpt"
+    return str(candidate) if candidate.is_file() else ""
 
 
 @dataclass(frozen=True)
@@ -79,7 +141,7 @@ class Settings:
     config_path: Path = _default_cslr_config()
     checkpoint_path: Path = _default_cslr_checkpoint()
     slt_config_path: Path = _default_slt_config()
-    slt_checkpoint_path: str = os.getenv("SLRT_SLT_CHECKPOINT", "")
+    slt_checkpoint_path: str = _default_slt_checkpoint()
     device: str = os.getenv("SLRT_DEVICE", "cuda")
     pred_src: str = os.getenv("SLRT_PRED_SRC", "ensemble")
     split_size: int = int(os.getenv("SLRT_SPLIT_SIZE", "8"))

@@ -52,6 +52,16 @@ class TensorInferenceRequest(BaseModel):
     predSrc: Literal["ensemble", "fuse"] = "ensemble"
 
 
+class GlossTranslationRequest(BaseModel):
+    glossText: str = Field(min_length=1)
+
+
+class GlossTranslationResponse(BaseModel):
+    glossText: str
+    translationText: Optional[str] = None
+    decodeMethod: str
+
+
 class TranslationCandidate(BaseModel):
     decodeMethod: str
     glossText: str

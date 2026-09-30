@@ -381,7 +381,7 @@ class TranslationService: ObservableObject {
                 method: "POST"
             )
             applyTranslationEvent(response)
-            completeCurrentSession(with: response.text)
+            completeCurrentSession(with: response.translationText ?? response.text ?? response.glossText)
             await MainActor.run {
                 self.connectionStatus = "Stopped"
             }
@@ -493,7 +493,7 @@ class TranslationService: ObservableObject {
             }
         }
 
-        if let text = response.text, !text.isEmpty {
+        if let text = response.translationText ?? response.text ?? response.glossText, !text.isEmpty {
             currentSession?.translationText = text
             DispatchQueue.main.async {
                 self.currentTranslation = text
@@ -724,6 +724,8 @@ private struct BackendTranslationEvent: Decodable {
     let keypointCount: Int
     let modelLoaded: Bool
     let text: String?
+    let glossText: String?
+    let translationText: String?
     let decodeMethod: String?
     let candidates: [BackendTranslationCandidate]
     let notes: [String]

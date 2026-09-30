@@ -56,6 +56,8 @@ def build_tensors_from_session(
     session: SessionState,
     use_keypoints: List[str] | None = None,
     expected_keypoint_count: int | None = None,
+    rgb_target_size: tuple[int, int] | None = None,
+    keypoint_target_size: tuple[int, int] | None = None,
 ) -> PreprocessedSessionBatch:
     usable_frames = []
     dropped_frame_indices: List[int] = []
@@ -82,6 +84,17 @@ def build_tensors_from_session(
         if frame_array.ndim != 3 or frame_array.shape[2] != 3:
             raise ValueError("Decoded frame must have shape [H, W, 3]")
 
+        source_height, source_width = frame_array.shape[:2]
+
+        if rgb_target_size is not None:
+            target_width, target_height = rgb_target_size
+            if target_width <= 0 or target_height <= 0:
+                raise ValueError("rgb_target_size must contain positive width and height")
+            if (source_width, source_height) != (target_width, target_height):
+                image = Image.fromarray((frame_array * 255.0).astype(np.uint8))
+                image = image.resize((target_width, target_height))
+                frame_array = np.asarray(image, dtype=np.float32) / 255.0
+
         if reference_height is None:
             reference_height, reference_width = frame_array.shape[:2]
         elif frame_array.shape[:2] != (reference_height, reference_width):
@@ -94,6 +107,13 @@ def build_tensors_from_session(
             use_keypoints=use_keypoints,
             expected_keypoint_count=expected_keypoint_count,
         )
+        if keypoint_target_size is not None:
+            target_width, target_height = keypoint_target_size
+            if target_width <= 0 or target_height <= 0:
+                raise ValueError("keypoint_target_size must contain positive width and height")
+            keypoint_array = keypoint_array.copy()
+            keypoint_array[:, 0] *= target_width / source_width
+            keypoint_array[:, 1] *= target_height / source_height
         if reference_keypoint_count is None:
             reference_keypoint_count = keypoint_array.shape[0]
         elif keypoint_array.shape[0] != reference_keypoint_count:

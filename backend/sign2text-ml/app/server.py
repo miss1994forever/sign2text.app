@@ -9,6 +9,8 @@ from .runtime import OnlineCSLRRuntime
 from .schemas import (
     FrameSizeResponse,
     FrameUploadRequest,
+    GlossTranslationRequest,
+    GlossTranslationResponse,
     HealthResponse,
     InferenceRequest,
     KeypointUploadRequest,
@@ -115,9 +117,23 @@ def load_runtime() -> HealthResponse:
     if settings.enable_slt:
         try:
             slt_runtime.load()
-        except WaitKSLTRuntimeError:
-            pass
+        except WaitKSLTRuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
     return build_health_response()
+
+
+@app.post("/api/v1/debug/translate-gloss", response_model=GlossTranslationResponse)
+def translate_gloss(request: GlossTranslationRequest) -> GlossTranslationResponse:
+    """Run only the gloss-to-natural-language stage for SLT bring-up."""
+    if not settings.enable_slt:
+        raise HTTPException(status_code=503, detail="wait-k SLT is disabled")
+    try:
+        result = slt_runtime.translate_gloss_text(request.glossText)
+    except WaitKSLTRuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Wait-k SLT failed: {exc}") from exc
+    return GlossTranslationResponse(**result)
 
 
 @app.post("/api/v1/translation/session", response_model=SessionCreateResponse)
@@ -226,6 +242,8 @@ def infer_session(session_id: str, request: InferenceRequest) -> TranslationEven
             session,
             use_keypoints=runtime.use_keypoints,
             expected_keypoint_count=runtime.expected_keypoint_count,
+            rgb_target_size=runtime.live_rgb_target_size,
+            keypoint_target_size=runtime.live_keypoint_target_size,
         )
         result = runtime.infer_live_tensors(
             video_tensor=batch.video_tensor,

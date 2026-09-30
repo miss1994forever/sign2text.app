@@ -38,17 +38,55 @@ class OnlineCSLRRuntime:
     def expected_keypoint_count(self) -> int:
         return self._expected_keypoint_count
 
+    @property
+    def live_rgb_target_size(self) -> tuple[int, int]:
+        self._ensure_loaded()
+        resize = self._cfg["data"].get("transform_cfg", {}).get("csl_resize")
+        if resize:
+            return int(resize[0]), int(resize[1])
+        raw_height, raw_width = self._cfg["model"]["RecognitionNetwork"]["heatmap_cfg"]["raw_size"]
+        return int(raw_width), int(raw_height)
+
+    @property
+    def live_keypoint_target_size(self) -> tuple[int, int]:
+        self._ensure_loaded()
+        raw_height, raw_width = self._cfg["model"]["RecognitionNetwork"]["heatmap_cfg"]["raw_size"]
+        return int(raw_width), int(raw_height)
+
     def _bootstrap_imports(self) -> None:
         cslr_root = str(self.settings.cslr_root)
         if cslr_root not in sys.path:
             sys.path.insert(0, cslr_root)
 
+        # Online CSLR and Online SLT both expose top-level ``modelling`` and
+        # ``utils`` packages. Drop the SLT variants when CSLR is loaded after
+        # the translation-only runtime.
+        for module_name in list(sys.modules):
+            if not (
+                module_name == "modelling"
+                or module_name.startswith("modelling.")
+                or module_name == "utils"
+                or module_name.startswith("utils.")
+            ):
+                continue
+            module_file = getattr(sys.modules[module_name], "__file__", "") or ""
+            if module_file and not module_file.startswith(cslr_root):
+                sys.modules.pop(module_name, None)
+
     def _resolve_checkpoint_path(self) -> Path:
-        candidates = [
-            self.settings.checkpoint_path,
-            self.settings.workspace_root / "models/checkpoints/online_slrt/best.ckpt",
-            self.settings.workspace_root / "models/checkpoints/online_slrt/cslr_best.ckpt",
-        ]
+        if self.settings.dataset_preset == "csl-daily":
+            # Do not fall back to the ambiguously named legacy cslr_best.ckpt:
+            # the artifact previously stored under that name is a PHOENIX model.
+            candidates = [
+                self.settings.checkpoint_path,
+                self.settings.workspace_root / "models/checkpoints/online_slrt/csl_daily_cslr_best.ckpt",
+            ]
+        else:
+            candidates = [
+                self.settings.checkpoint_path,
+                self.settings.workspace_root / "models/checkpoints/online_slrt/phoenix_2014t_islr_best.ckpt",
+                self.settings.cslr_root / "results/phoenix-2014t_ISLR/ckpts/best.ckpt",
+            ]
         for candidate in candidates:
             if candidate.is_file():
                 return candidate
@@ -96,13 +134,15 @@ class OnlineCSLRRuntime:
                 import torch
                 from modelling.model import build_model
                 from prediction_slide import index2token, pad_tensor, sliding_windows
-                from utils.misc import load_config, make_logger, neq_load_customized, set_seed
+                from utils.adaptive_stride import span_weighted_predictions
+                from utils.misc import load_config, make_logger, set_seed
 
                 self._torch = torch
                 self._prediction_slide = {
                     "index2token": index2token,
                     "pad_tensor": pad_tensor,
                     "sliding_windows": sliding_windows,
+                    "span_weighted_predictions": span_weighted_predictions,
                 }
 
                 cfg = load_config(str(self.settings.config_path))
@@ -124,7 +164,9 @@ class OnlineCSLRRuntime:
                 checkpoint_path = self._resolve_checkpoint_path()
 
                 state_dict = torch.load(str(checkpoint_path), map_location=cfg["device"])
-                neq_load_customized(model, state_dict["model_state"], verbose=True)
+                # Inference must restore every parameter; partial loading is only
+                # appropriate for explicitly configured transfer training.
+                model.load_state_dict(state_dict["model_state"], strict=True)
                 model.eval()
 
             self._cfg = cfg
@@ -169,6 +211,8 @@ class OnlineCSLRRuntime:
 
         win_size = cfg["data"].get("win_size", 16)
         stride = cfg["data"].get("stride", 1)
+        adaptive_cfg = cfg["data"].get("adaptive_stride", {})
+        span_voting_cfg = cfg.get("postprocess", {}).get("span_weighted_voting", {})
         split_size = self.settings.split_size
         threshold_candidates = cfg["data"].get("prob_thr", [-1])
         threshold = threshold_candidates[-1] if threshold_candidates else -1
@@ -176,14 +220,17 @@ class OnlineCSLRRuntime:
         sliding_windows = helpers["sliding_windows"]
         index2token = helpers["index2token"]
         pad_tensor = helpers["pad_tensor"]
+        span_weighted_predictions = helpers["span_weighted_predictions"]
 
         with torch.no_grad():
-            video_windows, keypoint_windows = sliding_windows(
+            video_windows, keypoint_windows, window_starts, window_metadata = sliding_windows(
                 video_tensor,
                 keypoint_tensor,
                 win_size=win_size,
                 stride=stride,
                 save_fea=False,
+                adaptive_cfg=adaptive_cfg,
+                return_starts=True,
             )
             video_splits = video_windows.split(split_size, dim=0)
             keypoint_splits = keypoint_windows.split(split_size, dim=0)
@@ -192,6 +239,9 @@ class OnlineCSLRRuntime:
             all_decode_ops = []
             final_gloss_logits = []
             all_gloss_logits = []
+            final_window_centers = []
+            all_window_centers = []
+            window_offset = 0
 
             for video_split, keypoint_split in zip(video_splits, keypoint_splits):
                 labels = torch.zeros(video_split.size(0), dtype=torch.long, device=cfg["device"])
@@ -226,18 +276,33 @@ class OnlineCSLRRuntime:
                 gloss_prob = gloss_logits.softmax(dim=-1)
                 max_prob = gloss_prob.amax(dim=-1)
                 decode_output = model.predict_gloss_from_logits(gloss_logits=gloss_logits, k=10)
+                split_starts = window_starts[window_offset : window_offset + video_split.size(0)]
+                split_centers = torch.tensor(
+                    [start + (win_size - 1) / 2.0 for start in split_starts],
+                    dtype=gloss_logits.dtype,
+                    device=gloss_logits.device,
+                )
+                window_offset += video_split.size(0)
                 if threshold <= 0.2 or torch.sum(max_prob > threshold).item() > 0:
                     final_decode_ops.append(decode_output[max_prob > threshold])
                     final_gloss_logits.append(gloss_logits[max_prob > threshold])
+                    final_window_centers.append(split_centers[max_prob > threshold])
                 all_decode_ops.append(decode_output)
                 all_gloss_logits.append(gloss_logits)
+                all_window_centers.append(split_centers)
 
             if final_decode_ops:
                 final_decode = torch.cat(final_decode_ops, dim=0)
                 final_logits = torch.cat(final_gloss_logits, dim=0)
+                final_centers = torch.cat(final_window_centers, dim=0)
             else:
                 final_decode = torch.cat(all_decode_ops, dim=0)
                 final_logits = torch.cat(all_gloss_logits, dim=0)
+                final_centers = torch.cat(all_window_centers, dim=0)
+            if final_decode.shape[0] == 0:
+                final_decode = torch.cat(all_decode_ops, dim=0)
+                final_logits = torch.cat(all_gloss_logits, dim=0)
+                final_centers = torch.cat(all_window_centers, dim=0)
 
             candidates: List[Dict[str, str]] = []
 
@@ -277,7 +342,24 @@ class OnlineCSLRRuntime:
                 gloss_text = " ".join(index2token(filtered_window, vocab, dataset_name))
                 candidates.append({"decodeMethod": f"window_greedy_{decode_window_size}", "glossText": gloss_text})
 
-            best_method = "window_greedy_7"
+            if span_voting_cfg.get("enabled", False):
+                vote_span = int(span_voting_cfg.get("vote_span_frames", 13))
+                span_index = span_weighted_predictions(
+                    final_logits,
+                    final_centers.tolist(),
+                    span=vote_span,
+                    min_weight=float(span_voting_cfg.get("min_weight", 0.05)),
+                ).detach().cpu().numpy()
+                filtered_span = []
+                for token_id in span_index:
+                    if not filtered_span or token_id != filtered_span[-1]:
+                        filtered_span.append(token_id)
+                filtered_span = [token_id for token_id in filtered_span if token_id != blank_id]
+                span_text = " ".join(index2token(filtered_span, vocab, dataset_name))
+                candidates.append({"decodeMethod": f"span_weighted_{vote_span}", "glossText": span_text})
+                best_method = f"span_weighted_{vote_span}"
+            else:
+                best_method = "window_greedy_13"
             best_text = next(
                 (candidate["glossText"] for candidate in candidates if candidate["decodeMethod"] == best_method),
                 naive_text,
@@ -291,6 +373,11 @@ class OnlineCSLRRuntime:
                 "candidates": candidates,
                 "windowSize": win_size,
                 "stride": stride,
+                "adaptiveStrideEnabled": bool(adaptive_cfg.get("enabled", adaptive_cfg.get("enable", False))),
+                "clipCount": len(window_starts),
+                "effectiveMeanStride": (
+                    sum(item["stride"] for item in window_metadata) / max(len(window_metadata), 1)
+                ),
                 "predSrc": pred_src,
             }
 
